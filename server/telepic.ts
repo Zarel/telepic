@@ -250,9 +250,14 @@ export class Room {
   }
 
   handleDisconnect(connection: Connection) {
+    let update = false;
     for (const player of this.players) {
+      if (!update && player.connections.size === 1 && player.connections.has(connection)) {
+        update = true;
+      }
       player.connections.delete(connection);
     }
     this.spectators.delete(connection);
+    if (update) this.updateSpectators();
   }
 }
