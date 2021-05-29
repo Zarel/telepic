@@ -6,6 +6,7 @@ import {CanvasDraw} from './canvas-draw';
 interface Sheet {
   type: 'pic' | 'text';
   value: string;
+  author: string;
 }
 
 class Room {
@@ -215,9 +216,15 @@ class Main extends preact.Component {
   };
   renderSheet(sheet: Sheet) {
     if (sheet.type === 'text') {
-      return <blockquote class="sheet sheet-text">{sheet.value}</blockquote>;
+      return <blockquote class="sheet sheet-text">
+        {sheet.value}
+        <p class="attrib">&mdash;{sheet.author}</p>
+      </blockquote>;
     }
-    return <blockquote class="sheet sheet-pic"><img src={sheet.value} /></blockquote>;
+    return <blockquote class="sheet sheet-pic">
+      <img src={sheet.value} />
+      <p class="attrib">&mdash;{sheet.author}</p>
+    </blockquote>;
   }
   renderYou(room: Room) {
     const you = room.you;
@@ -239,6 +246,7 @@ class Main extends preact.Component {
         <form onSubmit={this.submitSheet}>
           <label>{you.preview ? "Describe this drawing" : "Describe something to draw"}: <input type="text" name="value" /></label>
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
+          <p class="attrib">&mdash;{you.name}</p>
         </form>
       </blockquote>}
       {you.request === 'pic' && <blockquote class="sheet sheet-pic">
@@ -246,6 +254,7 @@ class Main extends preact.Component {
           <p><label>Draw this:</label></p>
           <DrawingCanvas />
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
+          <p class="attrib">&mdash;{you.name}</p>
         </form>
       </blockquote>}
       {!you.request && room.started && !room.ended && <p><em>Waiting for a stack to be passed to you...</em></p>}

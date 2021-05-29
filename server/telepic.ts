@@ -71,14 +71,16 @@ export class Sheet {
   type: 'pic' | 'text';
   /** data-URL if pic */
   value: string;
+  author: string;
 
-  constructor(type: Sheet['type'], value: string) {
+  constructor(type: Sheet['type'], value: string, author: string) {
     this.type = type;
     this.value = value;
+    this.author = author;
   }
 
   toJSON() {
-    return {type: this.type, value: this.value};
+    return {type: this.type, value: this.value, author: this.author};
   }
 }
 export class Stack {
@@ -159,7 +161,7 @@ export class Room {
     if (!request.request) return false;
 
     const stack = player.stacks.shift()!;
-    stack.sheets.push(new Sheet(request.request, value));
+    stack.sheets.push(new Sheet(request.request, value, player.name));
 
     const nextPlayer = this.nextPlayer(player);
     let nextPlayerUpdated = false;
