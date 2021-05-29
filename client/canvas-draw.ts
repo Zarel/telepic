@@ -5,7 +5,7 @@
  * @license MIT
  */
 
-interface Stroke {
+export interface Stroke {
   color: string;
   width: number;
   points: [number, number][],
@@ -27,7 +27,7 @@ function h<T extends HTMLElement = HTMLElement>(
   return elem;
 }
 
-class CanvasDraw {
+export class CanvasDraw {
   wrapper: HTMLDivElement;
 
   /** mostly just holds the cursor */
@@ -203,7 +203,9 @@ class CanvasDraw {
   updateButtons() {
     const buttons = this.wrapper.getElementsByTagName('button');
     for (const button of buttons as any as HTMLButtonElement[]) {
-      if (button.name === 'undo' || button.name === 'clear') {
+      if (button.name === 'undo') {
+        button.disabled = !this.strokes.length && !this.clearedStrokes.length;
+      } else if (button.name === 'clear') {
         button.disabled = !this.strokes.length;
       } else {
         button.disabled = (button.value === this.strokeColor || button.value === `${this.strokeWidth}`);
@@ -211,16 +213,22 @@ class CanvasDraw {
     }
   }
   clickColor = (ev: Event) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
     const value = (ev.currentTarget as HTMLButtonElement).value;
     this.strokeColor = value;
     this.updateButtons();
   };
   clickStrokeWidth = (ev: Event) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
     const value = (ev.currentTarget as HTMLButtonElement).value;
     this.strokeWidth = parseInt(value);
     this.updateButtons();
   };
-  undo = () => {
+  undo = (ev: Event) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
     if (!this.strokes.length) {
       if (!this.clearedStrokes.length) return;
       this.strokes = this.clearedStrokes.pop()!;
@@ -230,7 +238,9 @@ class CanvasDraw {
     this.redraw();
     this.updateButtons();
   }
-  clear = () => {
+  clear = (ev: Event) => {
+    ev.preventDefault();
+    ev.stopImmediatePropagation();
     if (!this.strokes.length) return;
     this.clearedStrokes.push(this.strokes);
     this.strokes = [];

@@ -1,16 +1,26 @@
 import preact from 'preact';
 declare type SockJS = WebSocket;
 declare var SockJS: typeof WebSocket;
+import {CanvasDraw} from './canvas-draw';
+
+interface Sheet {
+  type: 'pic' | 'text';
+  value: string;
+}
 
 class Room {
   roomid: string;
-  players: {name: string, offline?: boolean}[] = [];
-  you?: {name: string};
+  players: {name: string, offline?: boolean, stacks?: number[], ownStack?: Sheet[]}[] = [];
+  started = false;
+  ended = false;
+  you?: {name: string, preview?: Sheet, request?: Sheet['type']};
   constructor(roomid: string) {
     this.roomid = roomid;
   }
   update(data: any) {
     if (data.roomid !== this.roomid) return;
+    this.started = data.started || false;
+    this.ended = !!(data.players && data.players.length && data.players[0].ownStack);
     this.players = data.players;
   }
   updatePlayer(data: any) {
@@ -27,6 +37,7 @@ const telepic = new class Telepic {
   subscription?: () => void;
   room?: Room;
   backlog: string[] = [];
+  draw?: CanvasDraw;
 
   constructor() {
     this.initStorage();
@@ -131,6 +142,20 @@ const telepic = new class Telepic {
   }
 };
 
+class DrawingCanvas extends preact.Component {
+  draw?: CanvasDraw;
+  override shouldComponentUpdate() {
+    return false;
+  }
+  override componentDidMount() {
+    this.draw = new CanvasDraw(this.base as HTMLDivElement);
+    telepic.draw = this.draw;
+  }
+  render() {
+    return <div></div>;
+  }
+}
+
 class Main extends preact.Component {
   override componentDidMount() {
     telepic.subscription = () => this.forceUpdate();
@@ -149,13 +174,74 @@ class Main extends preact.Component {
     }
     telepic.send(`addplayer|${telepic.room.roomid}|${name}`);
   };
-  renderYou(room: Room) {
-    if (room.you) {
-      return <p>You: {room.you.name}</p>;
+  submitSheet = (e: Event) => {
+    e.preventDefault();
+    if (!telepic.room) {
+      alert("You're not in a room!");
+      return;
     }
-    return <form onSubmit={this.submitJoin}>
-      Name: <input type="text" name="name" value={telepic.name} /> <button type="submit">Join</button>
-    </form>;
+
+    const form = e.currentTarget as HTMLFormElement;
+    const valueInput = form.querySelector('input[name=value]') as HTMLInputElement | undefined;
+    if (!valueInput) {
+      // submit drawing
+      const draw = telepic.draw;
+      if (!draw) {
+        alert('no input found');
+        return;
+      }
+      const value = draw.drawingCanvas.toDataURL();
+
+      telepic.send(`submit|${telepic.room.roomid}|${value}`);
+    } else {
+      // submit text
+      const value = valueInput.value;
+      valueInput.value = '';
+  
+      telepic.send(`submit|${telepic.room.roomid}|${value}`);
+    }
+  };
+  start = (e: Event) => {
+    e.preventDefault();
+    if (!telepic.room) {
+      alert("You're not in a room!");
+      return;
+    }
+    telepic.send(`startgame|${telepic.room.roomid}`);
+  };
+  renderSheet(sheet: Sheet) {
+    if (sheet.type === 'text') {
+      return <blockquote>{sheet.value}</blockquote>;
+    }
+    return <blockquote><img src={sheet.value} /></blockquote>;
+  }
+  renderYou(room: Room) {
+    const you = room.you;
+    if (!you) {
+      return <form onSubmit={this.submitJoin}>
+        Name: <input type="text" name="name" value={telepic.name} /> <button type="submit">Join</button>
+      </form>;
+    }
+    return <div>
+      <p>You: {you.name}</p>
+      {you.preview && <div>
+        Passed sheet: {this.renderSheet(you.preview)}
+      </div>}
+      {you.request === 'text' && <form onSubmit={this.submitSheet}>
+        <input type="text" name="value" /> <button type="submit">Pass sheet on</button>
+      </form>}
+      {you.request === 'pic' && <form onSubmit={this.submitSheet}>
+        <DrawingCanvas /> <button type="submit">Pass sheet on</button>
+      </form>}
+      {!you.request && room.started && !room.ended && <p><em>Waiting for something to be passed to you...</em></p>}
+    </div>;
+  }
+  renderEnd(room: Room) {
+    if (!room.ended) return null;
+    return room.players.map(player => <div>
+      <div><strong>{player.name}'s stack</strong></div>
+      {player.ownStack?.map(sheet => this.renderSheet(sheet))}
+    </div>);
   }
   renderRoom() {
     const room = telepic.room;
@@ -165,9 +251,13 @@ class Main extends preact.Component {
       <p>Room {room.roomid}</p>
       <p>Players:</p>
       <ul>
-        {room.players.map(player => <li>{player.name}{player.offline ? ' (offline)' : ''}</li>)}
+        {room.players.map(player => <li>{player.name}{player.stacks?.map(stack => ` [${stack}]`).join('')}{player.offline ? ' (offline)' : ''}</li>)}
       </ul>
       {this.renderYou(room)}
+      {this.renderEnd(room)}
+      {!room.started && <p>
+        <button onClick={this.start}>Start</button>
+      </p>}
     </div>;
   }
   override render() {

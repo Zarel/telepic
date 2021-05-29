@@ -28,7 +28,9 @@ export class Connection {
 export class Player {
   sessionid?: string;
   name: string;
-  stack: Sheet[] = [];
+  ownStack?: Stack;
+  /** [0] is oldest and current stack */
+  stacks: Stack[] = [];
   connections = new Set<Connection>();
 
   constructor(name: string, connection?: Connection) {
@@ -39,10 +41,28 @@ export class Player {
     }
   }
 
-  toJSON() {
+  toJSON(ended?: boolean) {
     return {
       name: this.name,
       offline: this.connections.size ? undefined : true,
+      stacks: this.ownStack ? this.stacks.map(stack => stack.sheets.length) : undefined,
+      ownStack: ended ? this.ownStack!.toJSON() : undefined,
+    };
+  }
+
+  getRequestJSON() {
+    if (!this.stacks.length) {
+      return {
+        name: this.name,
+      };
+    }
+    const curStack = this.stacks[0];
+    const preview = curStack.sheets[curStack.sheets.length - 1];
+    const request: Sheet['type'] = preview?.type === 'text' ? 'pic' : 'text';
+    return {
+      name: this.name,
+      preview,
+      request,
     };
   }
 }
@@ -56,14 +76,32 @@ export class Sheet {
     this.type = type;
     this.value = value;
   }
+
+  toJSON() {
+    return {type: this.type, value: this.value};
+  }
+}
+export class Stack {
+  sheets: Sheet[] = [];
+  owner: string;
+  constructor(owner: string) {
+    this.owner = owner;
+  }
+  toJSON() {
+    return this.sheets.map(sheet => sheet.toJSON());
+  }
 }
 
 export class Room {
   started = false;
+  ended = false;
   roomid: string;
-  players = new Set<Player>();
+  players: Player[] = [];
   /** includes players */
   spectators = new Set<Connection>();
+  settings = {
+    desiredStackSize: 0,
+  };
 
   constructor(roomid: string) {
     this.roomid = roomid;
@@ -82,8 +120,13 @@ export class Room {
     }
     this.spectators.add(connection);
     connection.rooms.add(this);
-    this.updateAll();
-    if (curPlayer) this.updatePlayer(curPlayer);
+    if (curPlayer) {
+      // player online status may have updated
+      this.updateSpectators();
+      this.updatePlayer(curPlayer);
+    } else {
+      this.update(connection);
+    }
   }
 
   hasPlayer(name: string) {
@@ -94,28 +137,97 @@ export class Room {
     return false;
   }
 
-  addPlayer(connection?: Connection, name?: string) {
-    const playerName = name || connection?.name || `Player ${this.players.size + 1}`;
+  addPlayer(connection?: Connection, name?: string, index = this.players.length) {
+    if (this.started) return false;
+    const playerName = name || connection?.name || `Player ${this.players.length + 1}`;
     if (this.hasPlayer(playerName)) return false;
     const player = new Player(playerName, connection);
-    this.players.add(player);
+    this.players.splice(index, 0, player);
     if (connection) {
       connection.rooms.add(this);
       this.spectators.add(connection);
     }
-    this.updateAll();
+    this.updateSpectators();
     this.updatePlayer(player);
+    return true;
+  }
+
+  submit(connection: Connection, value: string) {
+    const player = this.getPlayer(connection);
+    if (!player) return false;
+    const request = player.getRequestJSON();
+    if (!request.request) return false;
+
+    const stack = player.stacks.shift()!;
+    stack.sheets.push(new Sheet(request.request, value));
+
+    const nextPlayer = this.nextPlayer(player);
+    let nextPlayerUpdated = false;
+    if (stack.sheets.length < this.settings.desiredStackSize) {
+      if (!nextPlayer.stacks.length) nextPlayerUpdated = true;
+      nextPlayer.stacks.push(stack);
+    }
+
+    if (this.tryEnd()) return true;
+
+    this.updateSpectators();
+    this.updatePlayer(player);
+    if (nextPlayerUpdated) this.updatePlayer(nextPlayer);
+    return true;
+  }
+
+  getPlayer(connection: Connection) {
+    for (const player of this.players) {
+      if (player.connections.has(connection)) return player;
+    }
+  }
+
+  nextPlayer(player: Player) {
+    const index = this.players.indexOf(player);
+    return this.players[(index + 1) % this.players.length];
+  }
+
+  start() {
+    if (this.started) return false;
+    if (!this.players.length) return false;
+    this.started = true;
+    if (!this.settings.desiredStackSize) {
+      this.settings.desiredStackSize = Math.max(5, this.players.length);
+    }
+    for (const player of this.players) {
+      player.ownStack = new Stack(player.name);
+      player.stacks = [player.ownStack];
+    }
+    this.updateSpectators();
+    this.updatePlayers();
+    return true;
+  }
+
+  tryEnd() {
+    if (!this.started || this.ended) return false;
+    if (this.players.some(player => !!player.stacks.length)) return false;
+    return this.end();
+  }
+  end() {
+    if (!this.started || this.ended) return false;
+    this.ended = true;
+    for (const player of this.players) {
+      player.stacks = [];
+    }
+    this.updateSpectators();
+    this.updatePlayers();
     return true;
   }
 
   toJSON() {
     return {
       roomid: this.roomid,
-      players: [...this.players].map(player => player.toJSON()),
+      started: this.started || undefined,
+      players: [...this.players].map(player => player.toJSON(this.ended)),
     };
   }
 
-  updateAll() {
+  updateSpectators() {
     for (const connection of this.spectators) {
       this.update(connection);
     }
@@ -129,7 +241,7 @@ export class Room {
     at.send(`room|${JSON.stringify(this.toJSON())}`);
   }
   updatePlayer(player: Player) {
-    const request = {name: player.name};
+    const request = player.getRequestJSON();
     for (const connection of player.connections) {
       connection.send(`player|${JSON.stringify(request)}`);
     }

@@ -1,14 +1,17 @@
 {
   "compilerOptions": {
-    "module": "CommonJS",
+    "lib": ["es2020"],
+    "module": "commonjs",
+    "target": "es2020",
+ 
     "strict": true,
     "noImplicitOverride": true,
-    "jsx": "react",
-    "jsxFactory": "preact.h",
-    "sourceMap": true,
     "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
 
     "noEmit": true
   },
+
   "include": ["*.ts", "*.tsx"]
 }

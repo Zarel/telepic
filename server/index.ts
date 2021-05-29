@@ -36,6 +36,26 @@ app.on('connection', conn => {
         connection.send(`error|Name ${parts[2]} already in use`)
       }
       break;
+    case 'startgame':
+      room = rooms.get(parts[1]);
+      if (!room) {
+        connection.send(`error|Room ${parts[1]} not found`);
+        break;
+      }
+      if (!room.start()) {
+        connection.send(`error|Could not start game (no players or already started)`);
+      }
+      break;
+    case 'submit':
+      room = rooms.get(parts[1]);
+      if (!room) {
+        connection.send(`error|Room ${parts[1]} not found`);
+        break;
+      }
+      if (!room.submit(connection, parts[2])) {
+        connection.send(`error|Could not submit sheet`);
+      }
+      break;
     default:
       connection.send(`error|Unrecognized message ${message}`);
       break;
