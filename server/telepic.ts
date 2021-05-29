@@ -1,5 +1,9 @@
 import type sockjs from 'sockjs';
 
+export function normalize(name: string) {
+  return name.toLowerCase().replace(/\s+/g, '');
+}
+
 export class Connection {
   conn: sockjs.Connection;
   sessionid?: string;
@@ -16,6 +20,9 @@ export class Connection {
     }
     this.rooms = new Set();
   }
+  send(message: string) {
+    this.conn.write(message);
+  }
 }
 
 export class Player {
@@ -30,6 +37,13 @@ export class Player {
       this.connections.add(connection);
       this.sessionid = connection.sessionid;
     }
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      offline: this.connections.size ? undefined : true,
+    };
   }
 }
 
@@ -48,35 +62,77 @@ export class Room {
   started = false;
   roomid: string;
   players = new Set<Player>();
+  /** includes players */
   spectators = new Set<Connection>();
 
   constructor(roomid: string) {
     this.roomid = roomid;
   }
 
-  addPlayer(connection?: Connection) {
-    if (this.rejoinPlayer(connection)) return;
-    if (this.started) {
-      if (connection) {
-        this.spectators.add(connection);
-        connection.rooms.add(this);
+  join(connection: Connection) {
+    let curPlayer;
+    if (connection.sessionid) {
+      for (const player of this.players) {
+        if (player.sessionid === connection.sessionid) {
+          player.connections.add(connection);
+          connection.rooms.add(this);
+          curPlayer = player;
+        }
       }
-      return;
     }
-    const playerName = connection?.name || `Player ${this.players.size + 1}`;
-    this.players.add(new Player(playerName, connection));
-    if (connection) connection.rooms.add(this);
+    this.spectators.add(connection);
+    connection.rooms.add(this);
+    this.updateAll();
+    if (curPlayer) this.updatePlayer(curPlayer);
   }
 
-  rejoinPlayer(connection: Connection) {
+  hasPlayer(name: string) {
+    const nName = normalize(name);
     for (const player of this.players) {
-      if (player.sessionid && player.sessionid === connection.sessionid) {
-        player.connections.add(connection);
-        connection.rooms.add(this);
-        return true;
-      }
+      if (nName === normalize(player.name)) return true;
     }
     return false;
+  }
+
+  addPlayer(connection?: Connection, name?: string) {
+    const playerName = name || connection?.name || `Player ${this.players.size + 1}`;
+    if (this.hasPlayer(playerName)) return false;
+    const player = new Player(playerName, connection);
+    this.players.add(player);
+    if (connection) {
+      connection.rooms.add(this);
+      this.spectators.add(connection);
+    }
+    this.updateAll();
+    this.updatePlayer(player);
+    return true;
+  }
+
+  toJSON() {
+    return {
+      roomid: this.roomid,
+      players: [...this.players].map(player => player.toJSON()),
+    };
+  }
+
+  updateAll() {
+    for (const connection of this.spectators) {
+      this.update(connection);
+    }
+  }
+  updatePlayers() {
+    for (const player of this.players) {
+      this.updatePlayer(player);
+    }
+  }
+  update(at: Connection) {
+    at.send(`room|${JSON.stringify(this.toJSON())}`);
+  }
+  updatePlayer(player: Player) {
+    const request = {name: player.name};
+    for (const connection of player.connections) {
+      connection.send(`player|${JSON.stringify(request)}`);
+    }
   }
 
   handleDisconnect(connection: Connection) {
