@@ -100,7 +100,7 @@ export class CanvasDraw {
           "Thick",
         ]), " ",
       ]),
-      h('div', {style: {width: styleWidth, height: styleHeight, border: `1px solid gray`, boxSizing: `content-box`}}, [
+      h('div', {className: 'canvas-draw', style: {width: styleWidth, height: styleHeight, border: `1px solid gray`, boxSizing: `content-box`}}, [
         (this.drawingCanvas = h<HTMLCanvasElement>('canvas', {
           width: this.w,
           height: this.h,
@@ -150,8 +150,9 @@ export class CanvasDraw {
       y = touches[0].clientY;
     }
 
+    const pixelRatio = this.w / rect.width;
     // It's impossible to get the actual coordinates on a Retina screen, so we have to approximate
-    return [(x - rect.left) * this.pixelRatio, (y - rect.top) * this.pixelRatio];
+    return [(x - rect.left) * pixelRatio, (y - rect.top) * pixelRatio];
   }
 
   draw(x: number, y: number) {

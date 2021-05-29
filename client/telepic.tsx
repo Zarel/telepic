@@ -288,9 +288,10 @@ class Main extends preact.Component {
       </div>
       {this.renderYou(room)}
       {this.renderEnd(room)}
-      {!room.started && <p>
-        <button onClick={this.start}>Start</button>
-      </p>}
+      {!room.started && <div>
+        <p>(Don't start until everyone who wants to join has joined!)</p>
+        <p><button onClick={this.start}>Start</button></p>
+      </div>}
     </div>;
   }
   override render() {
