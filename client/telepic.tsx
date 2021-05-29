@@ -271,7 +271,7 @@ class Main extends preact.Component {
   renderRoom() {
     const room = telepic.room;
     if (!room) return <div>
-      <p>You need to receive a message from someone!</p>
+      <p>This is a Telephone Pictionary game! You have to get an invite link from someone to play, though.</p>
     </div>;
 
     return <div>
