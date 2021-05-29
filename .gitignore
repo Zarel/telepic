@@ -4,3 +4,4 @@ node_modules
 package-lock.json
 client-dist
 server-dist
+client/config.ts

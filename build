@@ -12,6 +12,10 @@ const compiler = require('./build-tools/compiler');
 const compileStartTime = process.hrtime();
 let compiledFiles = 0;
 
+if (!fs.existsSync('./client/config.ts')) {
+	fs.writeFileSync('./client/config.ts', `export const SERVER_URL = 'http://localhost:8000';\n`);
+}
+
 const compileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tools/.babelrc') + ')'), {
 	babelrc: false,
 	incremental: true,

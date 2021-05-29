@@ -2,6 +2,7 @@ import preact from 'preact';
 declare type SockJS = WebSocket;
 declare var SockJS: typeof WebSocket;
 import {CanvasDraw} from './canvas-draw';
+import {SERVER_URL} from './config';
 
 interface Sheet {
   type: 'pic' | 'text';
@@ -88,7 +89,7 @@ const telepic = new class Telepic {
       this.connected = false;
       this.connection = undefined;
     }
-    this.connection = new SockJS('http://localhost:8000');
+    this.connection = new SockJS(SERVER_URL);
     this.connection.onopen = () => {
       this.connected = true;
       this.update();
