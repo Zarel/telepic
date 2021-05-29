@@ -1,0 +1,41 @@
+#!/usr/bin/env node
+
+"use strict";
+
+process.stdout.write("Compiling TS files... ");
+
+process.chdir(__dirname);
+
+const fs = require('fs');
+const compiler = require('./build-tools/compiler');
+
+const compileStartTime = process.hrtime();
+let compiledFiles = 0;
+
+const compileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tools/.babelrc') + ')'), {
+	babelrc: false,
+	incremental: true,
+	ignore: ['tsconfig.json'],
+});
+
+compiledFiles += compiler.compileToDir(
+	'client',
+	'client-dist',
+	compileOpts
+);
+// very dirty hack
+const serverCompileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tools/.babelrc-server') + ')'), {
+	babelrc: false,
+	incremental: true,
+	ignore: ['tsconfig.json'],
+});
+compiledFiles += compiler.compileToDir(
+	'server',
+	'server-dist',
+	serverCompileOpts
+);
+
+const diff = process.hrtime(compileStartTime);
+console.log(
+	`(${compiledFiles} ${compiledFiles !== 1 ? "files" : "file"} in ${diff[0] + Math.round(diff[1] / 1e6) / 1e3}s) DONE`
+);

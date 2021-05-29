@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "strict": true,
+    "jsx": "react",
+    "jsxFactory": "preact.h",
+    "sourceMap": true,
+    "esModuleInterop": true
+  },
+  "include": ["*.ts", "*.tsx"]
+}

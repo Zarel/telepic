@@ -1,0 +1,24 @@
+{
+  "name": "telepic",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "./build && node server-dist"
+  },
+  "author": "Zarel",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/sockjs": "^0.3.32",
+    "preact": "^10.5.13",
+    "typescript": "^4.3.2"
+  },
+  "dependencies": {
+    "@babel/core": "^7.14.3",
+    "@babel/plugin-transform-react-jsx": "^7.14.3",
+    "@babel/preset-env": "^7.14.4",
+    "@babel/preset-typescript": "^7.13.0",
+    "babel-plugin-remove-import-export": "^1.1.1",
+    "sockjs": "^0.3.21"
+  }
+}
