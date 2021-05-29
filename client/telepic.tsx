@@ -152,7 +152,7 @@ class DrawingCanvas extends preact.Component {
     telepic.draw = this.draw;
   }
   render() {
-    return <div></div>;
+    return <div data-dimensions="480x480"></div>;
   }
 }
 
@@ -171,6 +171,10 @@ class Main extends preact.Component {
     if (!telepic.room) {
       alert("You're not in a room!");
       return;
+    }
+    if (telepic.name !== name) {
+      telepic.name = name;
+      telepic.saveStorage();
     }
     telepic.send(`addplayer|${telepic.room.roomid}|${name}`);
   };
@@ -211,48 +215,68 @@ class Main extends preact.Component {
   };
   renderSheet(sheet: Sheet) {
     if (sheet.type === 'text') {
-      return <blockquote>{sheet.value}</blockquote>;
+      return <blockquote class="sheet sheet-text">{sheet.value}</blockquote>;
     }
-    return <blockquote><img src={sheet.value} /></blockquote>;
+    return <blockquote class="sheet sheet-pic"><img src={sheet.value} /></blockquote>;
   }
   renderYou(room: Room) {
     const you = room.you;
     if (!you) {
+      if (room.started) return null;
       return <form onSubmit={this.submitJoin}>
-        Name: <input type="text" name="name" value={telepic.name} /> <button type="submit">Join</button>
+        <label>Name: <input type="text" name="name" value={telepic.name} /></label> <button type="submit">Join</button>
       </form>;
     }
     return <div>
-      <p>You: {you.name}</p>
-      {you.preview && <div>
-        Passed sheet: {this.renderSheet(you.preview)}
-      </div>}
-      {you.request === 'text' && <form onSubmit={this.submitSheet}>
-        <input type="text" name="value" /> <button type="submit">Pass sheet on</button>
-      </form>}
-      {you.request === 'pic' && <form onSubmit={this.submitSheet}>
-        <DrawingCanvas /> <button type="submit">Pass sheet on</button>
-      </form>}
-      {!you.request && room.started && !room.ended && <p><em>Waiting for something to be passed to you...</em></p>}
+      <p>Playing as: {you.name}</p>
+      {you.preview ? <div>
+        <h2>Passed stack</h2>
+        {this.renderSheet(you.preview)}
+      </div> : you.request ? <h2>
+        {you.name}'s stack
+      </h2> : null}
+      {you.request === 'text' && <blockquote class="sheet sheet-text">
+        <form onSubmit={this.submitSheet}>
+          <label>{you.preview ? "Describe this drawing" : "Describe something to draw"}: <input type="text" name="value" /></label>
+          <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
+        </form>
+      </blockquote>}
+      {you.request === 'pic' && <blockquote class="sheet sheet-pic">
+        <form onSubmit={this.submitSheet}>
+          <p><label>Draw this:</label></p>
+          <DrawingCanvas />
+          <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
+        </form>
+      </blockquote>}
+      {!you.request && room.started && !room.ended && <p><em>Waiting for a stack to be passed to you...</em></p>}
     </div>;
   }
   renderEnd(room: Room) {
     if (!room.ended) return null;
     return room.players.map(player => <div>
-      <div><strong>{player.name}'s stack</strong></div>
+      <h2>{player.name}'s stack</h2>
       {player.ownStack?.map(sheet => this.renderSheet(sheet))}
     </div>);
   }
   renderRoom() {
     const room = telepic.room;
-    if (!room) return <div>No room</div>;
+    if (!room) return <div>
+      <p>You need to receive a message from someone!</p>
+    </div>;
 
     return <div>
-      <p>Room {room.roomid}</p>
-      <p>Players:</p>
-      <ul>
-        {room.players.map(player => <li>{player.name}{player.stacks?.map(stack => ` [${stack}]`).join('')}{player.offline ? ' (offline)' : ''}</li>)}
-      </ul>
+      <div class="players">
+        <ul>
+          {room.players.map(player => <li>
+            <strong>{player.name}</strong>
+            {player.stacks?.map(stack => <small class="ministack">{stack}</small>)}
+            {player.offline && <small> (offline)</small>}
+          </li>)}
+          {!room.players.length && <li>
+            <em>(No players have joined yet)</em>
+          </li>}
+        </ul>
+      </div>
       {this.renderYou(room)}
       {this.renderEnd(room)}
       {!room.started && <p>
@@ -262,7 +286,12 @@ class Main extends preact.Component {
   }
   override render() {
     return <div>
-      {!telepic.connected && <p style={{background: 'red', color: 'white'}}><strong>Not connected</strong></p>}
+      {telepic.room ? 
+        <h1><em>Telepic room:</em> {telepic.room.roomid}</h1>
+      :
+        <h1>Telepic</h1>
+      }
+      {!telepic.connected && <p class="bigerror"><strong>Not connected</strong></p>}
       {this.renderRoom()}
     </div>;
   }
