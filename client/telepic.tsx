@@ -216,6 +216,17 @@ class Main extends preact.Component {
     }
     telepic.send(`startgame|${telepic.room.roomid}`);
   };
+  create = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLFormElement;
+    const roomcode = (target.querySelector('input[name=roomcode]') as HTMLInputElement).value;
+    if (!roomcode) {
+      alert("Please choose a room code");
+      return;
+    }
+    location.hash = `#${roomcode}`;
+  };
   renderSheet(sheet: Sheet) {
     if (sheet.type === 'text') {
       return <blockquote class="sheet sheet-text">
@@ -275,10 +286,20 @@ class Main extends preact.Component {
       {player.ownStack?.map(sheet => this.renderSheet(sheet))}
     </div>);
   }
+  generateRoomCode() {
+    return `${Math.trunc(Math.random() * (36 ** 6)).toString(36)}${Math.trunc(Math.random() * (36 ** 6)).toString(36)}`;
+  }
   renderRoom() {
     const room = telepic.room;
-    if (!room) return <div>
-      <p>This is a Telephone Pictionary game! You have to get an invite link from someone to play, though.</p>
+    if (!room) return <div class="body">
+      <p>This is a Telephone Pictionary game!</p>
+      <form class="startform" onSubmit={this.create}>
+        <p><label>
+          Room code:<br />
+          <input type="text" name="roomcode" value={this.generateRoomCode()} />
+        </label></p>
+        <p class="buttonbar"><button type="submit">Create</button></p>
+      </form>
     </div>;
 
     return <div class="body">
