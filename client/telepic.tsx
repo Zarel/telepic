@@ -386,7 +386,9 @@ class Main extends preact.Component {
         </p>
         <p>
           {room.players.length < 3 ?
-            `(You need at least three players to start.)`
+            `(You need at least 3 players to start - and 5-10 players is best.)`
+          : room.players.length < 5 ?
+            `(5-10 players is best. Wait for everyone to join before you start!)`
           :
             `(Wait for everyone to join before you start!)`
           }

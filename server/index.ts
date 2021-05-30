@@ -2,7 +2,10 @@ import sockjs from 'sockjs';
 import http from 'http';
 import {Connection, Player, Room} from './telepic';
 
-const app = sockjs.createServer();
+const app = sockjs.createServer({
+  // by default, SockJS logs all requests to console for some crazy reason!
+  log: (severity, line) => { if (severity === 'error') console.error(line); },
+});
 const rooms = new Map<string, Room>();
 
 app.on('connection', conn => {
@@ -21,6 +24,10 @@ app.on('connection', conn => {
     case 'join':
       room = rooms.get(parts[1]);
       if (!room) {
+        if (!/^[a-z0-9-]+$/.test(parts[1])) {
+          connection.send(`error|Room code must contain lowercase letters, numbers, and hyphens (dashes) only`);
+          return;
+        }
         room = new Room(parts[1]);
         rooms.set(parts[1], room);
       }
@@ -55,6 +62,7 @@ app.on('connection', conn => {
       if (!room.start()) {
         connection.send(`error|Could not start game (no players or already started)`);
       }
+      console.log(`[${new Date().toISOString()}] started: ${parts[1]}`);
       break;
     case 'settings':
       room = rooms.get(parts[1]);
