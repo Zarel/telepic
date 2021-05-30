@@ -182,6 +182,15 @@ class Main extends preact.Component {
     }
     telepic.send(`addplayer|${telepic.room.roomid}|${name}`);
   };
+  leave = (e: Event) => {
+    e.preventDefault();
+
+    if (!telepic.room) {
+      alert("You're not in a room!");
+      return;
+    }
+    telepic.send(`removeplayer|${telepic.room.roomid}`);
+  };
   submitSheet = (e: Event) => {
     e.preventDefault();
     if (!telepic.room) {
@@ -280,12 +289,17 @@ class Main extends preact.Component {
       return <form onSubmit={this.submitJoin} class="startform">
         <p>
           <label>Your name: <input type="text" name="name" value={telepic.name} /></label> {}
-          <button type="submit">Join</button>
+          <button type="submit">Join game</button>
         </p>
       </form>;
     }
+    if (!room.started) {
+      return <p>
+        Your name: {you.name} <button onClick={this.leave}>Leave game</button>
+      </p>;
+    }
     return <div>
-      <p>Playing as: {you.name}</p>
+      <p>Your name: {you.name}</p>
       {you.preview ? <div>
         <h2>Passed stack</h2>
         {this.renderSheet(you.preview)}

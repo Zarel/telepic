@@ -155,6 +155,18 @@ export class Room {
     return true;
   }
 
+  removePlayer(connection: Connection) {
+    if (this.started) return false;
+    const index = this.players.findIndex(player => player.connections.has(connection));
+    if (index < 0) return false;
+    for (const connection of this.players[index].connections) {
+      connection.send(`player|`);
+    }
+    this.players.splice(index, 1);
+    this.updateSpectators();
+    return true;
+  }
+
   submit(connection: Connection, value: string) {
     const player = this.getPlayer(connection);
     if (!player) return false;

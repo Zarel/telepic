@@ -36,6 +36,16 @@ app.on('connection', conn => {
         connection.send(`error|Name ${parts[2]} already in use`)
       }
       break;
+    case 'removeplayer':
+      room = rooms.get(parts[1]);
+      if (!room) {
+        connection.send(`error|Room ${parts[1]} not found`);
+        break;
+      }
+      if (!room.removePlayer(connection)) {
+        connection.send(`error|You're not a player`)
+      }
+      break;
     case 'startgame':
       room = rooms.get(parts[1]);
       if (!room) {
