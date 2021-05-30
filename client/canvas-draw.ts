@@ -112,7 +112,7 @@ export class CanvasDraw {
           height: this.h,
           style: {width: styleWidth, height: styleHeight, display: 'block', position: 'absolute'},
         })),
-    
+
         (this.interfaceCanvas = h<HTMLCanvasElement>('canvas', {
           width: this.w,
           height: this.h,

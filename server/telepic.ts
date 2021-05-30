@@ -50,7 +50,7 @@ export class Player {
     };
   }
 
-  getRequestJSON() {
+  getRequestJSON(startWith: Sheet['type']) {
     if (!this.stacks.length) {
       return {
         name: this.name,
@@ -58,7 +58,7 @@ export class Player {
     }
     const curStack = this.stacks[0];
     const preview = curStack.sheets[curStack.sheets.length - 1];
-    const request: Sheet['type'] = preview?.type === 'text' ? 'pic' : 'text';
+    const request: Sheet['type'] = preview ? (preview.type === 'text' ? 'pic' : 'text') : startWith;
     return {
       name: this.name,
       preview,
@@ -102,6 +102,7 @@ export class Room {
   /** includes players */
   spectators = new Set<Connection>();
   settings = {
+    startWith: 'pic' as Sheet['type'],
     desiredStackSize: 0,
   };
 
@@ -157,7 +158,7 @@ export class Room {
   submit(connection: Connection, value: string) {
     const player = this.getPlayer(connection);
     if (!player) return false;
-    const request = player.getRequestJSON();
+    const request = player.getRequestJSON(this.settings.startWith);
     if (!request.request) return false;
 
     const stack = player.stacks.shift()!;
@@ -189,13 +190,18 @@ export class Room {
     return this.players[(index + 1) % this.players.length];
   }
 
+  changeSettings(settings: Partial<Room['settings']>) {
+    Object.assign(this.settings, settings);
+    this.updateSpectators();
+    return true;
+  }
+
   start() {
     if (this.started) return false;
     if (!this.players.length) return false;
     this.started = true;
-    if (!this.settings.desiredStackSize) {
-      this.settings.desiredStackSize = Math.max(5, this.players.length);
-    }
+    this.settings.desiredStackSize ||= Math.max(5, this.players.length);
+    this.settings.startWith ||= 'text';
     for (const player of this.players) {
       player.ownStack = new Stack(player.name);
       player.stacks = [player.ownStack];
@@ -226,6 +232,7 @@ export class Room {
       roomid: this.roomid,
       started: this.started || undefined,
       players: [...this.players].map(player => player.toJSON(this.ended)),
+      settings: this.settings,
     };
   }
 
@@ -243,7 +250,7 @@ export class Room {
     at.send(`room|${JSON.stringify(this.toJSON())}`);
   }
   updatePlayer(player: Player) {
-    const request = player.getRequestJSON();
+    const request = player.getRequestJSON(this.settings.startWith);
     for (const connection of player.connections) {
       connection.send(`player|${JSON.stringify(request)}`);
     }

@@ -46,6 +46,16 @@ app.on('connection', conn => {
         connection.send(`error|Could not start game (no players or already started)`);
       }
       break;
+    case 'settings':
+      room = rooms.get(parts[1]);
+      if (!room) {
+        connection.send(`error|Room ${parts[1]} not found`);
+        break;
+      }
+      if (!room.changeSettings(JSON.parse(parts[2]))) {
+        connection.send(`error|Could not change settings (already started?)`);
+      }
+      break;
     case 'submit':
       room = rooms.get(parts[1]);
       if (!room) {

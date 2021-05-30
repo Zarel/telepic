@@ -16,6 +16,7 @@ class Room {
   started = false;
   ended = false;
   you?: {name: string, preview?: Sheet, request?: Sheet['type']};
+  settings: {startWith: Sheet['type'], desiredStackSize: 0} = {startWith: 'text', desiredStackSize: 0};
   constructor(roomid: string) {
     this.roomid = roomid;
   }
@@ -24,6 +25,7 @@ class Room {
     this.started = data.started || false;
     this.ended = !!(data.players && data.players.length && data.players[0].ownStack);
     this.players = data.players;
+    this.settings = data.settings;
   }
   updatePlayer(data: any) {
     this.you = data;
@@ -207,6 +209,26 @@ class Main extends preact.Component {
       telepic.send(`submit|${telepic.room.roomid}|${value}`);
     }
   };
+  changeSetting = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!telepic.room) {
+      alert("You're not in a room!");
+      return;
+    }
+    const target = e.currentTarget as HTMLInputElement;
+    switch (target.name) {
+    case 'startwith':
+      telepic.send(`settings|${telepic.room.roomid}|${JSON.stringify({startWith: target.value})}`);
+      break;
+    case 'desiredstacksize':
+      telepic.send(`settings|${telepic.room.roomid}|${JSON.stringify({desiredStackSize: parseInt(target.value)})}`);
+      break;
+    default:
+      alert(`Unrecognized ${target.name}`);
+      break;
+    }
+  };
   start = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
@@ -223,6 +245,10 @@ class Main extends preact.Component {
     const roomcode = (target.querySelector('input[name=roomcode]') as HTMLInputElement).value;
     if (!roomcode) {
       alert("Please choose a room code");
+      return;
+    }
+    if (roomcode.includes('|')) {
+      alert("Room codes must not include the pipe (|) character");
       return;
     }
     location.hash = `#${roomcode}`;
@@ -270,7 +296,7 @@ class Main extends preact.Component {
       </blockquote>}
       {you.request === 'pic' && <blockquote class="sheet sheet-pic">
         <form onSubmit={this.submitSheet}>
-          <p><label>Draw this:</label></p>
+          <p><label>{you.preview ? "Draw this" : "Draw something to describe"}:</label></p>
           <DrawingCanvas />
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
           <p class="attrib">&mdash;{you.name}</p>
@@ -314,6 +340,7 @@ class Main extends preact.Component {
             <em>(No players have joined yet)</em>
           </li>}
         </ul>
+        {room.started && <p><small>Stacks end at {room.settings.desiredStackSize} sheets</small></p>}
       </div>
       {this.renderYou(room)}
       {this.renderEnd(room)}
@@ -322,6 +349,19 @@ class Main extends preact.Component {
         <input type="text" readonly value={location.href} style={{width: '100%'}} />
       </p>}
       {!room.started && <form class="startform" onSubmit={this.start}>
+        <p>
+          <label>Start with: <select name="startwith" onChange={this.changeSetting} value={room.settings.startWith}>
+            <option value="text">Writing</option><option value="pic">Drawing</option>
+          </select></label>
+        </p>
+        <p>
+          <label>End at stack size: <select name="desiredstacksize" onChange={this.changeSetting} value={room.settings.desiredStackSize}>
+            <option value="0">Default ({Math.max(5, room.players.length)})</option>
+            {Array(Math.max(10, 2 * room.players.length)).fill(0).map((v, i) => (
+              <option value={i + 1}>{i + 1}</option>
+            ))}
+          </select></label>
+        </p>
         <p>
           {!room.players.length ?
             `(You need at least one player to start.)`
@@ -345,7 +385,7 @@ class Main extends preact.Component {
   }
   override render() {
     return <div>
-      {telepic.room ? 
+      {telepic.room ?
         <h1><em>Telepic room:</em> {telepic.room.roomid}</h1>
       :
         <h1>Telepic</h1>
