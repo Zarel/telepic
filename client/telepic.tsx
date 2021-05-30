@@ -169,7 +169,7 @@ class Main extends preact.Component {
   }
   submitJoin = (e: Event) => {
     const form = e.currentTarget as HTMLFormElement;
-    const name = (form.querySelector('input[name=name]') as HTMLInputElement)?.value || '';
+    const name = (form.querySelector('input[name=name]') as HTMLInputElement)?.value.trim() || '';
     e.preventDefault();
 
     if (!telepic.room) {
@@ -198,6 +198,10 @@ class Main extends preact.Component {
         alert('no input found');
         return;
       }
+      if (!draw.strokes.length) {
+        alert('Please draw something first!');
+        return;
+      }
       const value = draw.drawingCanvas.toDataURL();
 
       telepic.send(`submit|${telepic.room.roomid}|${value}`);
@@ -205,7 +209,11 @@ class Main extends preact.Component {
       // submit text
       const value = valueInput.value;
       valueInput.value = '';
-  
+
+      if (!value.replace(/[ .]+/g, '')) {
+        alert('Please enter a description first!');
+        return;
+      }
       telepic.send(`submit|${telepic.room.roomid}|${value}`);
     }
   };
@@ -271,7 +279,7 @@ class Main extends preact.Component {
       if (room.started) return null;
       return <form onSubmit={this.submitJoin} class="startform">
         <p>
-          <label>Name: <input type="text" name="name" value={telepic.name} /></label> {}
+          <label>Your name: <input type="text" name="name" value={telepic.name} /></label> {}
           <button type="submit">Join</button>
         </p>
       </form>;
