@@ -371,14 +371,14 @@ class Main extends preact.Component {
           </select></label>
         </p>
         <p>
-          {!room.players.length ?
-            `(You need at least one player to start.)`
+          {room.players.length < 3 ?
+            `(You need at least three players to start.)`
           :
             `(Wait for everyone to join before you start!)`
           }
         </p>
         <p class="buttonbar">
-          {!room.players.length ?
+          {room.players.length < 3 ?
             <button type="submit" disabled>
               <s>Start</s>
             </button>
