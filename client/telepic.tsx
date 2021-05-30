@@ -209,6 +209,7 @@ class Main extends preact.Component {
   };
   start = (e: Event) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!telepic.room) {
       alert("You're not in a room!");
       return;
@@ -231,8 +232,11 @@ class Main extends preact.Component {
     const you = room.you;
     if (!you) {
       if (room.started) return null;
-      return <form onSubmit={this.submitJoin}>
-        <label>Name: <input type="text" name="name" value={telepic.name} /></label> <button type="submit">Join</button>
+      return <form onSubmit={this.submitJoin} class="startform">
+        <p>
+          <label>Name: <input type="text" name="name" value={telepic.name} /></label> {}
+          <button type="submit">Join</button>
+        </p>
       </form>;
     }
     return <div>
@@ -245,7 +249,10 @@ class Main extends preact.Component {
       </h2> : null}
       {you.request === 'text' && <blockquote class="sheet sheet-text">
         <form onSubmit={this.submitSheet}>
-          <label>{you.preview ? "Describe this drawing" : "Describe something to draw"}: <input type="text" name="value" /></label>
+          <label>
+            {you.preview ? "Describe this drawing" : "Describe something to draw"}: {}
+            <input type="text" name="value" autofocus />
+          </label>
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
           <p class="attrib">&mdash;{you.name}</p>
         </form>
@@ -274,7 +281,7 @@ class Main extends preact.Component {
       <p>This is a Telephone Pictionary game! You have to get an invite link from someone to play, though.</p>
     </div>;
 
-    return <div>
+    return <div class="body">
       <div class="players">
         <ul>
           {room.players.map(player => <li>
@@ -289,10 +296,30 @@ class Main extends preact.Component {
       </div>
       {this.renderYou(room)}
       {this.renderEnd(room)}
-      {!room.started && <div>
-        <p>(Don't start until everyone who wants to join has joined!)</p>
-        <p><button onClick={this.start}>Start</button></p>
-      </div>}
+      {!room.started && <p style={{maxWidth: '490px'}}>
+        Invite people with this link!<br />
+        <input type="text" readonly value={location.href} style={{width: '100%'}} />
+      </p>}
+      {!room.started && <form class="startform" onSubmit={this.start}>
+        <p>
+          {!room.players.length ?
+            `(You need at least one player to start.)`
+          :
+            `(Wait for everyone to join before you start!)`
+          }
+        </p>
+        <p class="buttonbar">
+          {!room.players.length ?
+            <button type="submit" disabled>
+              <s>Start</s>
+            </button>
+            :
+            <button type="submit">
+              Start with {room.players.length} player{room.players.length === 1 ? '' : 's'}
+            </button>
+          }
+        </p>
+      </form>}
     </div>;
   }
   override render() {
