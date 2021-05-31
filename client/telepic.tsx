@@ -33,7 +33,7 @@ class Room {
 }
 
 const telepic = new class Telepic {
-  connection?: SockJS;
+  connection?: WebSocket;
   sessionid!: string;
   /** DEFAULT username - not necessarily your name in the current game */
   name?: string;
@@ -94,7 +94,11 @@ const telepic = new class Telepic {
       this.connected = false;
       this.connection = undefined;
     }
-    this.connection = new SockJS(SERVER_URL);
+    if ((window as any).SockJS) {
+      this.connection = new SockJS(SERVER_URL);
+    } else {
+      this.connection = new WebSocket(SERVER_URL.replace('http', 'ws') + '/websocket');
+    }
     this.connection.onopen = () => {
       this.connected = true;
       this.update();
