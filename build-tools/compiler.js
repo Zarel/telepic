@@ -127,6 +127,7 @@ function compileToDir(srcDir, destDir, opts = {}) {
     if (!relative.endsWith('.ts') && !relative.endsWith('.tsx')) {
       const dest = path.join(destDir, relative);
       if (incremental && noRebuildNeeded(src, dest)) return 0;
+      fs.mkdirSync(path.dirname(dest), {recursive: true});
       fs.copyFileSync(src, dest);
       fs.chmodSync(dest, fs.statSync(src).mode);
       return 1;
