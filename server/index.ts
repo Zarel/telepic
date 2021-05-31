@@ -50,6 +50,7 @@ app.on('connection', conn => {
         rooms.set(parts[1], room);
       }
       room.join(connection);
+      room.host = connection.name || '';
       break;
     case 'addplayer':
       room = rooms.get(parts[1]);

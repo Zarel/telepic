@@ -7,6 +7,9 @@ export const roomsTable = new DatabaseTable<{
   roomcode: string,
   host: string,
   creationtime: number,
+  lastmovetime: number,
+  players: string,
+  playercount: number,
   state: string,
 }>(db, 'rooms', 'roomcode');
 

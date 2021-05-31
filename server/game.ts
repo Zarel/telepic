@@ -98,6 +98,7 @@ export class Room {
   ended = false;
   host = '';
   creationTime = Date.now();
+  lastMoveTime = Date.now();
   roomid: string;
   players: Player[] = [];
   /** includes players */
@@ -186,6 +187,7 @@ export class Room {
       if (!nextPlayer.stacks.length) nextPlayerUpdated = true;
       nextPlayer.stacks.push(stack);
     }
+    this.lastMoveTime = Date.now();
 
     if (this.tryEnd()) return true;
 
@@ -297,6 +299,7 @@ export class Room {
       }
       this.host = data.host;
       this.creationTime = data.creationtime;
+      this.lastMoveTime = data.lastmovetime;
       this.deserialize(JSON.parse(data.state));
     } catch (err) {
       this.started = false;
@@ -312,6 +315,9 @@ export class Room {
       await roomsTable.set(this.roomid, {
         host: this.host,
         creationtime: this.creationTime,
+        lastmovetime: this.lastMoveTime,
+        playercount: this.players.length,
+        players: this.players.map(p => p.name).join(', ').slice(0, 100),
         state: JSON.stringify(this.serialize()),
       });
     } catch (err) {
