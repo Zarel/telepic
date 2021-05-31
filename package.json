@@ -9,6 +9,7 @@
   "author": "Zarel",
   "license": "MIT",
   "devDependencies": {
+    "@types/mysql": "^2.15.18",
     "@types/sockjs": "^0.3.32",
     "preact": "^10.5.13",
     "typescript": "^4.3.2"
@@ -19,6 +20,7 @@
     "@babel/preset-env": "^7.14.4",
     "@babel/preset-typescript": "^7.13.0",
     "babel-plugin-remove-import-export": "^1.1.1",
+    "mysql": "^2.18.1",
     "sockjs": "^0.3.21"
   }
 }

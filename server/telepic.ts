@@ -1,4 +1,7 @@
 import type sockjs from 'sockjs';
+import {roomsTable} from './databases';
+
+export const rooms = new Map<string, Room>();
 
 export function normalize(name: string) {
   return name.toLowerCase().replace(/\s+/g, '');
@@ -33,8 +36,13 @@ export class Player {
   stacks: Stack[] = [];
   connections = new Set<Connection>();
 
-  constructor(name: string, connection?: Connection) {
-    this.name = name;
+  constructor(options: {name: string} & Partial<ReturnType<Player['serialize']>>, connection?: Connection) {
+    this.name = options.name;
+    this.sessionid = options.sessionid;
+    if (options.ownStack) {
+      this.ownStack = new Stack(this.name);
+      this.ownStack.sheets = options.ownStack.map(sheet => new Sheet(sheet.type, sheet.value, sheet.author));
+    }
     if (connection) {
       this.connections.add(connection);
       this.sessionid = connection.sessionid;
@@ -63,6 +71,17 @@ export class Player {
       name: this.name,
       preview,
       request,
+    };
+  }
+
+  serialize() {
+    // n.b. players can't deserialize themselves because `stacks` contains external pointers;
+    // they're instead deserialized in Room#deserialize
+    return {
+      name: this.name,
+      sessionid: this.sessionid,
+      ownStack: this.ownStack?.toJSON(),
+      stacks: this.stacks.map(stack => stack.owner),
     };
   }
 }
@@ -95,8 +114,11 @@ export class Stack {
 }
 
 export class Room {
-  started = false;
+  /** undefined = still loading */
+  started?: boolean = false;
   ended = false;
+  host = '';
+  creationTime = Date.now();
   roomid: string;
   players: Player[] = [];
   /** includes players */
@@ -108,6 +130,7 @@ export class Room {
 
   constructor(roomid: string) {
     this.roomid = roomid;
+    this.load();
   }
 
   join(connection: Connection) {
@@ -144,7 +167,7 @@ export class Room {
     if (this.started) return false;
     const playerName = name || connection?.name || `Player ${this.players.length + 1}`;
     if (this.hasPlayer(playerName)) return false;
-    const player = new Player(playerName, connection);
+    const player = new Player({name: playerName}, connection);
     this.players.splice(index, 0, player);
     if (connection) {
       connection.rooms.add(this);
@@ -243,9 +266,64 @@ export class Room {
     return {
       roomid: this.roomid,
       started: this.started || undefined,
-      players: [...this.players].map(player => player.toJSON(this.ended)),
+      loading: this.started === undefined || undefined,
+      players: this.players.map(player => player.toJSON(this.ended)),
       settings: this.settings,
     };
+  }
+
+  serialize() {
+    return {
+      started: this.started,
+      ended: this.ended,
+      players: this.players.map(player => player.serialize()),
+      settings: this.settings,
+    };
+  }
+  deserialize(data: ReturnType<Room['serialize']>) {
+    this.started = !!data.started;
+    this.ended = !!data.ended;
+    this.players = [];
+    const playerTable = new Map<string, Player>();
+    for (const playerData of data.players) {
+      const player = new Player(playerData);
+      playerTable.set(player.name, player);
+      this.players.push(player);
+    }
+    for (const [i, playerData] of data.players.entries()) {
+      this.players[i].stacks = playerData.stacks.map(stackOwner => playerTable.get(stackOwner)!.ownStack!);
+    }
+    this.settings = data.settings;
+
+    for (const connection of this.spectators) {
+      for (const player of this.players) {
+        if (player.sessionid && player.sessionid === connection.sessionid) {
+          player.connections.add(connection);
+        }
+      }
+    }
+    this.updateSpectators();
+    this.updatePlayers();
+  }
+  async load() {
+    this.started = undefined;
+    const data = await roomsTable.get(this.roomid);
+    if (!data) {
+      this.started = false;
+      return;
+    }
+    this.host = data.host;
+    this.creationTime = data.creationtime;
+    this.deserialize(JSON.parse(data.state));
+  }
+  save() {
+    if (this.ended && !this.started) return;
+    if (!this.started && !this.players.length) return;
+    roomsTable.set(this.roomid, {
+      host: this.host,
+      creationtime: this.creationTime,
+      state: JSON.stringify(this.serialize()),
+    });
   }
 
   updateSpectators() {
@@ -277,6 +355,11 @@ export class Room {
       player.connections.delete(connection);
     }
     this.spectators.delete(connection);
-    if (update) this.updateSpectators();
+    if (!this.spectators.size) {
+      this.save();
+      rooms.delete(this.roomid);
+    } else {
+      if (update) this.updateSpectators();
+    }
   }
 }

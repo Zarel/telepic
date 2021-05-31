@@ -1,12 +1,11 @@
 import sockjs from 'sockjs';
 import http from 'http';
-import {Connection, Player, Room} from './telepic';
+import {Connection, Room, rooms} from './telepic';
 
 const app = sockjs.createServer({
   // by default, SockJS logs all requests to console for some crazy reason!
   log: (severity, line) => { if (severity === 'error') console.error(line); },
 });
-const rooms = new Map<string, Room>();
 
 app.on('connection', conn => {
   let connection = new Connection(conn);
@@ -98,3 +97,13 @@ const server = http.createServer();
 app.installHandlers(server);
 server.listen(8000, '0.0.0.0');
 console.log("Listening on localhost:8000");
+
+process.on('SIGINT', async () => {
+  process.stdout.write(`Saving ${rooms.size} open rooms... `);
+
+  for (const room of rooms.values()) {
+    await room.save();
+  }
+  console.log("DONE");
+  process.exit(130);
+});

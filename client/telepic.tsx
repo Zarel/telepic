@@ -13,7 +13,7 @@ interface Sheet {
 class Room {
   roomid: string;
   players: {name: string, offline?: boolean, stacks?: number[], ownStack?: Sheet[]}[] = [];
-  started = false;
+  started?: boolean;
   ended = false;
   you?: {name: string, preview?: Sheet, request?: Sheet['type']};
   settings: {startWith: Sheet['type'], desiredStackSize: 0} = {startWith: 'text', desiredStackSize: 0};
@@ -22,7 +22,7 @@ class Room {
   }
   update(data: any) {
     if (data.roomid !== this.roomid) return;
-    this.started = data.started || false;
+    this.started = data.loading ? undefined : (data.started || false);
     this.ended = !!(data.players && data.players.length && data.players[0].ownStack);
     this.players = data.players;
     this.settings = data.settings;
@@ -283,9 +283,18 @@ class Main extends preact.Component {
     </blockquote>;
   }
   renderYou(room: Room) {
+    if (room.started === undefined) {
+      return <p>
+        <em>Loading...</em>
+      </p>;
+    }
     const you = room.you;
     if (!you) {
-      if (room.started) return null;
+      if (room.started) {
+        return <p>
+          This is a game is in progress! You're not playing, so all you can see are the players and their stack sizes.
+        </p>;
+      }
       return <form onSubmit={this.submitJoin} class="startform">
         <p>
           <label>Your name: <input type="text" name="name" value={telepic.name} /></label> {}

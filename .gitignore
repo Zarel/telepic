@@ -4,3 +4,4 @@ package-lock.json
 client-dist
 server-dist
 client/config.ts
+server/config.ts
