@@ -115,5 +115,5 @@ process.on('SIGINT', async () => {
     await room.save();
   }
   console.log("DONE");
-  process.exit(130);
+  process.exit(0);
 });
