@@ -13,6 +13,13 @@ export const roomsTable = new DatabaseTable<{
   state: string,
 }>(db, 'rooms', 'roomcode');
 
+export const userRoomsTable = new DatabaseTable<{
+  id: string,
+  email: string,
+  roomcode: string,
+  lastmovetime: number
+}>(db, 'userrooms', 'id');
+
 export const usersTable = new DatabaseTable<{
   email: string,
   password: string,

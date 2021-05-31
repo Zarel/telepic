@@ -1,5 +1,5 @@
 import type sockjs from 'sockjs';
-import {sessionsTable, usersTable} from './databases';
+import {sessionsTable, usersTable, userRoomsTable} from './databases';
 import bcrypt from 'bcrypt';
 import type {Room} from './game';
 
@@ -153,5 +153,28 @@ export class User {
   constructor(options: {email: string, name: string}) {
     this.email = options.email;
     this.name = options.name;
+  }
+
+  static async rememberGame(accountid: string | undefined, room: Room) {
+    if (accountid?.includes('@')) {
+      try {
+        await userRoomsTable.set(`${accountid}|${room.roomid}`, {
+          email: accountid, roomcode: room.roomid, lastmovetime: room.lastMoveTime,
+        });
+      } catch (err) {
+        console.error(`Database error: ${err.message}`);
+        console.error(`Query: ${err.sql}`);
+      }
+    }
+  }
+  static async forgetGame(accountid: string | undefined, room: Room) {
+    if (accountid?.includes('@')) {
+      try {
+        await userRoomsTable.delete(`${accountid}|${room.roomid}`);
+      } catch (err) {
+        console.error(`Database error: ${err.message}`);
+        console.error(`Query: ${err.sql}`);
+      }
+    }
   }
 }

@@ -1,5 +1,5 @@
 import {roomsTable} from './databases';
-import {Connection} from './users';
+import {Connection, User} from './users';
 
 export const rooms = new Map<string, Room>();
 
@@ -157,18 +157,21 @@ export class Room {
     }
     this.updateSpectators();
     this.updatePlayer(player);
+    User.rememberGame(player.accountid, this);
     return true;
   }
 
   removePlayer(connection: Connection) {
     if (this.started) return false;
     const index = this.players.findIndex(player => player.connections.has(connection));
+    const player = this.players[index];
     if (index < 0) return false;
-    for (const connection of this.players[index].connections) {
+    for (const connection of player.connections) {
       connection.send(`player|`);
     }
     this.players.splice(index, 1);
     this.updateSpectators();
+    User.forgetGame(player.accountid, this);
     return true;
   }
 
@@ -355,6 +358,7 @@ export class Room {
           connection.send(`error|You were a player, but the account you logged into is a different player.`);
         } else {
           player.accountid = connection.accountid();
+          User.rememberGame(player.accountid, this);
         }
       }
       if (player.accountid !== connection.accountid()) {
