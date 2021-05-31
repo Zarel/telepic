@@ -18,6 +18,10 @@ export class Connection {
     this.ip = conn.remoteAddress || '';
   }
 
+  accountid() {
+    return this.user?.email || this.sessionid;
+  }
+
   destroy() {
     for (const room of this.rooms) {
       room.handleDisconnect(this);
@@ -26,6 +30,21 @@ export class Connection {
   }
   send(message: string) {
     this.conn.write(message);
+  }
+  setUser(user: User | undefined) {
+    if (this.user === user) return;
+    this.user = user;
+    if (user) {
+      // logging in, update player account IDs
+      this.name = user.name;
+      this.send(`user|${this.name}`);
+    } else {
+      // logging out, you are no longer a player in any game
+      this.send(`user|`);
+    }
+    for (const room of this.rooms) {
+      room.handleAccountUpdate(this);
+    }
   }
 
   async register(email: string, unencryptedPassword: string, name: string) {
@@ -38,14 +57,16 @@ export class Connection {
       return false;
     }
     const password = await bcrypt.hash(unencryptedPassword, 12);
+    const userInfo = {
+      email,
+      password,
+      name,
+      regtime: Date.now(),
+      regip: this.ip,
+    };
     try {
-      const result = await usersTable.tryInsert({
-        email,
-        password,
-        name,
-        regtime: Date.now(),
-        regip: this.ip,
-      });
+      const result = await usersTable.tryInsert(userInfo);
+      delete (userInfo as any)['password'];
       if (!result) {
         this.send(`usererror|An account with e-mail address "${email}" already exists.`);
         return false;
@@ -61,7 +82,7 @@ export class Connection {
       console.error(`Query: ${err.sql}`);
       return false;
     }
-    this.send(`user|${this.name}`);
+    this.setUser(new User(userInfo));
     return true;
   }
   async login(email: string, unencryptedPassword: string) {
@@ -84,9 +105,7 @@ export class Connection {
         ip: this.ip,
         lastlogintime: Date.now(),
       });
-      this.user = new User(userInfo);
-      this.name = this.user.name;
-      this.send(`user|${this.name}`);
+      this.setUser(new User(userInfo));
     } catch (err) {
       this.send(`usererror|Database error: ${err.message}`);
       console.error(`Database error: ${err.message}`);
@@ -98,8 +117,7 @@ export class Connection {
   async logout() {
     if (!this.sessionid) return false;
     if (!this.user) return false;
-    this.user = undefined;
-    this.send(`user|`);
+    this.setUser(undefined);
     try {
       await sessionsTable.delete(this.sessionid);
     } catch (err) {

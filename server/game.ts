@@ -1,5 +1,5 @@
 import {roomsTable} from './databases';
-import type {Connection} from './users';
+import {Connection} from './users';
 
 export const rooms = new Map<string, Room>();
 
@@ -8,7 +8,7 @@ export function normalize(name: string) {
 }
 
 export class Player {
-  sessionid?: string;
+  accountid?: string;
   name: string;
   ownStack?: Stack;
   /** [0] is oldest and current stack */
@@ -17,14 +17,14 @@ export class Player {
 
   constructor(options: {name: string} & Partial<ReturnType<Player['serialize']>>, connection?: Connection) {
     this.name = options.name;
-    this.sessionid = options.sessionid;
+    this.accountid = options.accountid;
     if (options.ownStack) {
       this.ownStack = new Stack(this.name);
       this.ownStack.sheets = options.ownStack.map(sheet => new Sheet(sheet.type, sheet.value, sheet.author));
     }
     if (connection) {
       this.connections.add(connection);
-      this.sessionid = connection.sessionid;
+      this.accountid = connection.accountid();
     }
   }
 
@@ -58,7 +58,7 @@ export class Player {
     // they're instead deserialized in Room#deserialize
     return {
       name: this.name,
-      sessionid: this.sessionid,
+      accountid: this.accountid,
       ownStack: this.ownStack?.toJSON(),
       stacks: this.stacks.map(stack => stack.owner),
     };
@@ -103,7 +103,7 @@ export class Room {
   /** includes players */
   spectators = new Set<Connection>();
   settings = {
-    startWith: 'pic' as Sheet['type'],
+    startWith: 'text' as Sheet['type'],
     desiredStackSize: 0,
   };
 
@@ -114,9 +114,10 @@ export class Room {
 
   join(connection: Connection) {
     let curPlayer;
-    if (connection.sessionid) {
+    const accountid = connection.accountid();
+    if (accountid) {
       for (const player of this.players) {
-        if (player.sessionid === connection.sessionid) {
+        if (player.accountid === accountid) {
           player.connections.add(connection);
           connection.rooms.add(this);
           curPlayer = player;
@@ -277,7 +278,7 @@ export class Room {
 
     for (const connection of this.spectators) {
       for (const player of this.players) {
-        if (player.sessionid && player.sessionid === connection.sessionid) {
+        if (player.accountid && player.accountid === connection.accountid()) {
           player.connections.add(connection);
         }
       }
@@ -291,6 +292,7 @@ export class Room {
       const data = await roomsTable.get(this.roomid);
       if (!data) {
         this.started = false;
+        this.updateSpectators();
         return;
       }
       this.host = data.host;
@@ -338,6 +340,28 @@ export class Room {
     }
   }
 
+  handleAccountUpdate(connection: Connection) {
+    const player = this.getPlayer(connection);
+    if (player) {
+      if (connection.user) {
+        // logged in
+        if (this.players.some(p => p !== player && p.accountid === connection.accountid())) {
+          connection.send(`error|You were a player, but the account you logged into is a different player.`);
+        } else {
+          player.accountid = connection.accountid();
+        }
+      }
+      if (player.accountid !== connection.accountid()) {
+        // logged out
+        player.connections.delete(connection);
+        connection.send(`player|`);
+        if (!player.connections.size) this.updateSpectators();
+      }
+    } else {
+      // perhaps you logged into an account that's currently playing
+      this.join(connection);
+    }
+  }
   handleDisconnect(connection: Connection) {
     let update = false;
     for (const player of this.players) {

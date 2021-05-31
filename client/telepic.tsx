@@ -410,6 +410,7 @@ class UserComponent extends preact.Component {
     const name = (target.querySelector('input[name=name]') as HTMLInputElement).value;
     const password = (target.querySelector('input[name=password]') as HTMLInputElement).value;
     const confirmpassword = (target.querySelector('input[name=confirmpassword]') as HTMLInputElement).value;
+    if (name) telepic.name = name;
     if (!email) {
       telepic.loginerror = `Please enter an email address`;
       telepic.update();
@@ -468,6 +469,7 @@ class UserComponent extends preact.Component {
       if (telepic.registered === true) {
         // success
         this.page = undefined;
+        telepic.loginerror = undefined;
         return null;
       }
       return <form class="startform" onSubmit={this.submitLogin}>
@@ -484,6 +486,7 @@ class UserComponent extends preact.Component {
       if (telepic.registered === true) {
         // success
         this.page = undefined;
+        telepic.loginerror = undefined;
         return null;
       }
       return <form class="startform" onSubmit={this.submitRegister}>
