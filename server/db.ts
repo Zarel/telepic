@@ -15,7 +15,12 @@ export class Database {
     // console.log(query);
     return new Promise((resolve, reject) => {
       this.connection.query({sql: query, values: params}, (error, results) => {
-        if (error) return reject(error);
+        if (error) {
+          if (error.fatal) {
+            console.error(error);
+          }
+          return reject(error);
+        }
         resolve(results);
       })
     });
