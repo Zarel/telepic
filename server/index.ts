@@ -1,6 +1,9 @@
 import sockjs from 'sockjs';
 import http from 'http';
+import https from 'https';
+import fs from 'fs';
 import {Connection, Room, rooms} from './telepic';
+import {PORT, HTTPS_PORT, HTTPS_CERT, HTTPS_KEY} from './config';
 
 const app = sockjs.createServer({
   // by default, SockJS logs all requests to console for some crazy reason!
@@ -95,8 +98,15 @@ app.on('connection', conn => {
 
 const server = http.createServer();
 app.installHandlers(server);
-server.listen(8000, '0.0.0.0');
-console.log("Listening on localhost:8000");
+server.listen(PORT, '0.0.0.0');
+console.log(`Listening on localhost:${PORT}`);
+
+if (HTTPS_PORT) {
+  const httpsServer = https.createServer({key: fs.readFileSync(HTTPS_KEY!), cert: fs.readFileSync(HTTPS_CERT!)});
+  app.installHandlers(httpsServer);
+  httpsServer.listen(HTTPS_PORT, '0.0.0.0');
+  console.log(`Listening on wss://localhost:${HTTPS_PORT}`);
+}
 
 process.on('SIGINT', async () => {
   process.stdout.write(`Saving ${rooms.size} open rooms... `);

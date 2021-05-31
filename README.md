@@ -27,6 +27,10 @@ And a `server/config.ts`;
 
 ```ts
 export const MYSQL_SERVER = 'mysql://username:password@host/database';
+export const PORT = 8000;
+export const HTTPS_PORT = null; // number: HTTPS port
+export const HTTPS_CERT = null; // string: path to cert
+export const HTTPS_KEY = null; // string: path to key
 ```
 
 I'll upload the schema at some point, but you can probably figure it out from `server/databases.ts`
