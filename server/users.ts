@@ -139,9 +139,7 @@ export class Connection {
       if (!session) return false;
       const userInfo = await usersTable.get(session.email);
       if (!userInfo) return false;
-      this.user = new User(userInfo);
-      this.name = this.user.name;
-      this.send(`user|${this.name}`);
+      this.setUser(new User(userInfo));
     } catch {
       return false;
     }
