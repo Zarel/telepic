@@ -42,6 +42,9 @@ const telepic = new class Telepic {
   room?: Room;
   backlog: string[] = [];
   draw?: CanvasDraw;
+  /** undefined: login/register in progress */
+  registered?: boolean = false;
+  loginerror?: string;
 
   constructor() {
     this.initStorage();
@@ -131,6 +134,18 @@ const telepic = new class Telepic {
     case 'error':
       alert(parts[1]);
       break;
+    case 'usererror':
+      telepic.loginerror = parts[1];
+      telepic.registered = false;
+      this.update();
+      break;
+    case 'user':
+      if (parts[1]) {
+        telepic.name = parts[1];
+      }
+      telepic.registered = !!parts[1];
+      this.update();
+      break;
     case 'room':
       this.room?.update(JSON.parse(parts[1]));
       this.update();
@@ -146,7 +161,7 @@ const telepic = new class Telepic {
   }
 };
 
-class DrawingCanvas extends preact.Component {
+class CanvasDrawComponent extends preact.Component {
   draw?: CanvasDraw;
   override shouldComponentUpdate() {
     return false;
@@ -160,44 +175,26 @@ class DrawingCanvas extends preact.Component {
   }
 }
 
-class Main extends preact.Component {
-  override componentDidMount() {
-    telepic.subscription = () => this.forceUpdate();
-  }
-  override componentWillUnmount() {
-    telepic.subscription = undefined;
-  }
+class RoomComponent extends preact.Component<{room: Room}> {
   submitJoin = (e: Event) => {
     const form = e.currentTarget as HTMLFormElement;
     const name = (form.querySelector('input[name=name]') as HTMLInputElement)?.value.trim() || '';
     e.preventDefault();
 
-    if (!telepic.room) {
-      alert("You're not in a room!");
-      return;
-    }
     if (telepic.name !== name) {
       telepic.name = name;
       telepic.saveStorage();
     }
-    telepic.send(`addplayer|${telepic.room.roomid}|${name}`);
+    telepic.send(`addplayer|${this.props.room.roomid}|${name}`);
   };
   leave = (e: Event) => {
     e.preventDefault();
 
-    if (!telepic.room) {
-      alert("You're not in a room!");
-      return;
-    }
-    telepic.send(`removeplayer|${telepic.room.roomid}`);
+    telepic.send(`removeplayer|${this.props.room.roomid}`);
   };
   submitSheet = (e: Event) => {
     e.preventDefault();
-    if (!telepic.room) {
-      alert("You're not in a room!");
-      return;
-    }
-
+    const roomid = this.props.room.roomid;
     const form = e.currentTarget as HTMLFormElement;
     const valueInput = form.querySelector('input[name=value]') as HTMLInputElement | undefined;
     if (!valueInput) {
@@ -213,7 +210,7 @@ class Main extends preact.Component {
       }
       const value = draw.drawingCanvas.toDataURL();
 
-      telepic.send(`submit|${telepic.room.roomid}|${value}`);
+      telepic.send(`submit|${roomid}|${value}`);
     } else {
       // submit text
       const value = valueInput.value;
@@ -223,23 +220,20 @@ class Main extends preact.Component {
         alert('Please enter a description first!');
         return;
       }
-      telepic.send(`submit|${telepic.room.roomid}|${value}`);
+      telepic.send(`submit|${roomid}|${value}`);
     }
   };
   changeSetting = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!telepic.room) {
-      alert("You're not in a room!");
-      return;
-    }
     const target = e.currentTarget as HTMLInputElement;
+    const roomid = this.props.room.roomid;
     switch (target.name) {
     case 'startwith':
-      telepic.send(`settings|${telepic.room.roomid}|${JSON.stringify({startWith: target.value})}`);
+      telepic.send(`settings|${roomid}|${JSON.stringify({startWith: target.value})}`);
       break;
     case 'desiredstacksize':
-      telepic.send(`settings|${telepic.room.roomid}|${JSON.stringify({desiredStackSize: parseInt(target.value)})}`);
+      telepic.send(`settings|${roomid}|${JSON.stringify({desiredStackSize: parseInt(target.value)})}`);
       break;
     default:
       alert(`Unrecognized ${target.name}`);
@@ -249,26 +243,7 @@ class Main extends preact.Component {
   start = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!telepic.room) {
-      alert("You're not in a room!");
-      return;
-    }
-    telepic.send(`startgame|${telepic.room.roomid}`);
-  };
-  create = (e: Event) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const target = e.currentTarget as HTMLFormElement;
-    const roomcode = (target.querySelector('input[name=roomcode]') as HTMLInputElement).value;
-    if (!roomcode) {
-      alert("Please choose a room code");
-      return;
-    }
-    if (roomcode.includes('|')) {
-      alert("Room codes must not include the pipe (|) character");
-      return;
-    }
-    location.hash = `#${roomcode}`;
+    telepic.send(`startgame|${this.props.room.roomid}`);
   };
   renderSheet(sheet: Sheet) {
     if (sheet.type === 'text') {
@@ -328,7 +303,7 @@ class Main extends preact.Component {
       {you.request === 'pic' && <blockquote class="sheet sheet-pic">
         <form onSubmit={this.submitSheet}>
           <p><label>{you.preview ? "Draw this" : "Draw something to describe"}:</label></p>
-          <DrawingCanvas />
+          <CanvasDrawComponent />
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
           <p class="attrib">&mdash;{you.name}</p>
         </form>
@@ -343,21 +318,8 @@ class Main extends preact.Component {
       {player.ownStack?.map(sheet => this.renderSheet(sheet))}
     </div>);
   }
-  generateRoomCode() {
-    return `${Math.trunc(Math.random() * (36 ** 6)).toString(36)}${Math.trunc(Math.random() * (36 ** 6)).toString(36)}`;
-  }
-  renderRoom() {
-    const room = telepic.room;
-    if (!room) return <div class="body">
-      <p>This is a Telephone Pictionary game!</p>
-      <form class="startform" onSubmit={this.create}>
-        <p><label>
-          Room code:<br />
-          <input type="text" name="roomcode" value={this.generateRoomCode()} />
-        </label></p>
-        <p class="buttonbar"><button type="submit">Create</button></p>
-      </form>
-    </div>;
+  override render() {
+    const room = this.props.room;
 
     return <div class="body">
       <div class="players">
@@ -416,13 +378,192 @@ class Main extends preact.Component {
       </form>}
     </div>;
   }
+}
+
+class UserComponent extends preact.Component {
+  page?: 'changename' | 'login' | 'register';
+  submitLogin = (e: Event) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const target = e.currentTarget as HTMLFormElement;
+    const email = (target.querySelector('input[name=email]') as HTMLInputElement).value;
+    const password = (target.querySelector('input[name=password]') as HTMLInputElement).value;
+    if (!email) {
+      telepic.loginerror = `Please enter an email address`;
+      telepic.update();
+      return;
+    }
+    if (!password) {
+      telepic.loginerror = `Please enter a password`;
+      telepic.update();
+      return;
+    }
+    telepic.registered = undefined;
+    telepic.update();
+    telepic.send(`login|${email}|${password}`);
+  };
+  submitRegister = (e: Event) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    const target = e.currentTarget as HTMLFormElement;
+    const email = (target.querySelector('input[name=email]') as HTMLInputElement).value;
+    const name = (target.querySelector('input[name=name]') as HTMLInputElement).value;
+    const password = (target.querySelector('input[name=password]') as HTMLInputElement).value;
+    const confirmpassword = (target.querySelector('input[name=confirmpassword]') as HTMLInputElement).value;
+    if (!email) {
+      telepic.loginerror = `Please enter an email address`;
+      telepic.update();
+      return;
+    }
+    if (!name) {
+      telepic.loginerror = `Please enter a name`;
+      telepic.update();
+      return;
+    }
+    if (!password) {
+      telepic.loginerror = `Please enter a password`;
+      telepic.update();
+      return;
+    }
+    if (confirmpassword !== password) {
+      telepic.loginerror = `Your passwords don't match`;
+      telepic.update();
+      return;
+    }
+    telepic.registered = undefined;
+    telepic.update();
+    telepic.send(`register|${email}|${name}|${password}`);
+  };
+  login = (e: Event) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    this.page = 'login';
+    telepic.update();
+  };
+  register = (e: Event) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    this.page = 'register';
+    telepic.update();
+  };
+  logout = (e: Event) => {
+    telepic.send(`logout`);
+    telepic.name = '';
+    telepic.registered = false;
+    telepic.saveStorage();
+    telepic.update();
+  };
+  cancel = (e: Event) => {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    this.page = undefined;
+    telepic.loginerror = undefined;
+    telepic.update();
+  };
+  renderPage() {
+    if (this.page === 'changename') {
+      return null; // maybe support this later
+    }
+    if (this.page === 'login') {
+      if (telepic.registered === true) {
+        // success
+        this.page = undefined;
+        return null;
+      }
+      return <form class="startform" onSubmit={this.submitLogin}>
+        {telepic.loginerror && <p class="error">{telepic.loginerror}</p>}
+        <p><label>Email: <br /><input type="text" name="email" /></label></p>
+        <p><label>Password: <br /><input type="password" name="password" /></label></p>
+        <p class="buttonbar">
+          <button type="submit" disabled={telepic.registered !== false}><strong>Log in</strong></button> {}
+          <button onClick={this.cancel}>Cancel</button>
+        </p>
+      </form>;
+    }
+    if (this.page === 'register') {
+      if (telepic.registered === true) {
+        // success
+        this.page = undefined;
+        return null;
+      }
+      return <form class="startform" onSubmit={this.submitRegister}>
+        {telepic.loginerror && <p class="error">{telepic.loginerror}</p>}
+        <p><label>Email: <br /><input type="text" name="email" /></label></p>
+        <p><label>Name: <br /><input type="text" name="name" value={telepic.name} /></label></p>
+        <p><label>Password: <br /><input type="password" name="password" /></label></p>
+        <p><label>Confirm password: <br /><input type="password" name="confirmpassword" /></label></p>
+        <p class="buttonbar">
+          <button type="submit" disabled={telepic.registered !== false}><strong>Register</strong></button> {}
+          <button onClick={this.cancel}>Cancel</button>
+        </p>
+      </form>;
+    }
+    return null;
+  }
+  render() {
+    if (telepic.registered) {
+      return <div class="user">
+        <p class="userbar"><strong>{telepic.name}</strong> <button onClick={this.logout}>Log out</button></p>
+        {this.renderPage()}
+      </div>;
+    }
+    return <div class="user">
+      <p class="userbar">
+        <strong>{telepic.name}</strong> {}
+        <button disabled={this.page === 'login'} onClick={this.login}>Log in</button> {}
+        <button disabled={this.page === 'register'} onClick={this.register}>Register</button>
+      </p>
+      {this.renderPage()}
+    </div>;
+  }
+}
+
+class Main extends preact.Component {
+  create = (e: Event) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const target = e.currentTarget as HTMLFormElement;
+    const roomcode = (target.querySelector('input[name=roomcode]') as HTMLInputElement).value;
+    if (!roomcode) {
+      alert("Please choose a room code");
+      return;
+    }
+    if (roomcode.includes('|')) {
+      alert("Room codes must not include the pipe (|) character");
+      return;
+    }
+    location.hash = `#${roomcode}`;
+  };
+  override componentDidMount() {
+    telepic.subscription = () => this.forceUpdate();
+  }
+  override componentWillUnmount() {
+    telepic.subscription = undefined;
+  }
+  generateRoomCode() {
+    return `${Math.trunc(Math.random() * (36 ** 6)).toString(36)}${Math.trunc(Math.random() * (36 ** 6)).toString(36)}`;
+  }
+  renderRoom() {
+    const room = telepic.room;
+    if (!room) return <div class="body">
+      <p>This is a Telephone Pictionary game!</p>
+      <form class="startform" onSubmit={this.create}>
+        <p><label>
+          Room code:<br />
+          <input type="text" name="roomcode" value={this.generateRoomCode()} />
+        </label></p>
+        <p class="buttonbar"><button type="submit">Create</button></p>
+      </form>
+    </div>;
+
+    return <RoomComponent room={room} />;
+  }
   override render() {
     return <div>
-      {telepic.room ?
-        <h1><em>Telepic room:</em> {telepic.room.roomid}</h1>
-      :
+      <div class="header">
+        <UserComponent />
         <h1>Telepic</h1>
-      }
+      </div>
       {!telepic.connected && <p class="bigerror"><strong>Not connected</strong></p>}
       {this.renderRoom()}
     </div>;

@@ -2,7 +2,10 @@ import sockjs from 'sockjs';
 import http from 'http';
 import https from 'https';
 import fs from 'fs';
-import {Connection, Room, rooms} from './telepic';
+
+import {Room, rooms} from './game';
+import {Connection} from './users';
+
 import {PORT, HTTPS_PORT, HTTPS_CERT, HTTPS_KEY} from './config';
 
 const app = sockjs.createServer({
@@ -18,7 +21,16 @@ app.on('connection', conn => {
     let room;
     switch (parts[0]) {
     case 'sessionid':
-      connection.sessionid = parts[1];
+      connection.setSessionid(parts[1]);
+      break;
+    case 'login':
+      connection.login(parts[1], parts.slice(2).join('|'));
+      break;
+    case 'logout':
+      connection.logout();
+      break;
+    case 'register':
+      connection.register(parts[1], parts.slice(3).join('|'), parts[2]);
       break;
     case 'name':
       connection.name = parts[1];
@@ -28,6 +40,10 @@ app.on('connection', conn => {
       if (!room) {
         if (!/^[a-z0-9-]+$/.test(parts[1])) {
           connection.send(`error|Room code must contain lowercase letters, numbers, and hyphens (dashes) only`);
+          return;
+        }
+        if (parts[1].length > 200) {
+          connection.send(`error|Room code must be under 200 characters long`);
           return;
         }
         room = new Room(parts[1]);

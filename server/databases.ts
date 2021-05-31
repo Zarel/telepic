@@ -9,3 +9,18 @@ export const roomsTable = new DatabaseTable<{
   creationtime: number,
   state: string,
 }>(db, 'rooms', 'roomcode');
+
+export const usersTable = new DatabaseTable<{
+  email: string,
+  password: string,
+  name: string,
+  regtime: number,
+  regip: string,
+}>(db, 'users', 'email');
+
+export const sessionsTable = new DatabaseTable<{
+  sessionid: string,
+  email: string,
+  ip: string,
+  lastlogintime: number,
+}>(db, 'sessions', 'sessionid');

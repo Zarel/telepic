@@ -1,31 +1,10 @@
-import type sockjs from 'sockjs';
 import {roomsTable} from './databases';
+import type {Connection} from './users';
 
 export const rooms = new Map<string, Room>();
 
 export function normalize(name: string) {
   return name.toLowerCase().replace(/\s+/g, '');
-}
-
-export class Connection {
-  conn: sockjs.Connection;
-  sessionid?: string;
-  name?: string;
-  rooms = new Set<Room>();
-
-  constructor(conn: sockjs.Connection) {
-    this.conn = conn;
-  }
-
-  destroy() {
-    for (const room of this.rooms) {
-      room.handleDisconnect(this);
-    }
-    this.rooms = new Set();
-  }
-  send(message: string) {
-    this.conn.write(message);
-  }
 }
 
 export class Player {
@@ -150,7 +129,8 @@ export class Room {
       // player online status may have updated
       this.updateSpectators();
       this.updatePlayer(curPlayer);
-    } else {
+    } else if (this.started !== undefined) {
+      // if we're loading, wait until we're done loading to send updates
       this.update(connection);
     }
   }
@@ -307,23 +287,35 @@ export class Room {
   }
   async load() {
     this.started = undefined;
-    const data = await roomsTable.get(this.roomid);
-    if (!data) {
+    try {
+      const data = await roomsTable.get(this.roomid);
+      if (!data) {
+        this.started = false;
+        return;
+      }
+      this.host = data.host;
+      this.creationTime = data.creationtime;
+      this.deserialize(JSON.parse(data.state));
+    } catch (err) {
       this.started = false;
-      return;
+      this.updateSpectators();
+      console.error(`Database error: ${err.message}`);
+      console.error(`Query: ${err.sql}`);
     }
-    this.host = data.host;
-    this.creationTime = data.creationtime;
-    this.deserialize(JSON.parse(data.state));
   }
-  save() {
+  async save() {
     if (this.ended && !this.started) return;
     if (!this.started && !this.players.length) return;
-    roomsTable.set(this.roomid, {
-      host: this.host,
-      creationtime: this.creationTime,
-      state: JSON.stringify(this.serialize()),
-    });
+    try {
+      await roomsTable.set(this.roomid, {
+        host: this.host,
+        creationtime: this.creationTime,
+        state: JSON.stringify(this.serialize()),
+      });
+    } catch (err) {
+      console.error(`Database error: ${err.message}`);
+      console.error(`Query: ${err.sql}`);
+    }
   }
 
   updateSpectators() {

@@ -12,6 +12,7 @@ export class Database {
     this.connection = mysql.createConnection(url);
   }
   query<T = {[k: string]: any}>(query: string, params?: SQLParam[]): Promise<T[]> {
+    // console.log(query);
     return new Promise((resolve, reject) => {
       this.connection.query({sql: query, values: params}, (error, results) => {
         if (error) return reject(error);
@@ -59,6 +60,17 @@ export class DatabaseTable<T = {[k: string]: string | number | null}> {
 
   // high-level
 
+  async tryInsert(value: Partial<T>) {
+    try {
+      await this.db.query(`INSERT INTO ${this.name} SET ?`, [value as any]);
+      return true;
+    } catch (err) {
+      if (err.code === 'ER_DUP_ENTRY') {
+        return false;
+      }
+      throw err;
+    }
+  }
   get(primaryKey: string | number) {
     return this.selectOneWhere(`*`, `${this.primaryKeyName} = ?`, [primaryKey]);
   }

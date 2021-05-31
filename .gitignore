@@ -1,7 +1,8 @@
 .DS_Store
-node_modules
+node_modules/
 package-lock.json
-client-dist
-server-dist
+client-dist/
+server-dist/
 client/config.ts
 server/config.ts
+server/ssl/
