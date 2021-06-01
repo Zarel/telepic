@@ -96,13 +96,13 @@ export class CanvasDraw {
         ]),
         " | ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "1"}, [
-          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '1px solid black', display: 'inline-block', transform: 'translateY(-6px) rotate(-15deg)'}}),
+          h('span', {style: {width: '28px', height: '2px', margin: '0 -6px', background: 'black', display: 'inline-block', transform: 'translateY(-6px) rotate(-15deg)'}}),
         ]), " ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "2"}, [
-          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '2px solid black', display: 'inline-block', transform: 'translateY(-5px) rotate(-15deg)'}}),
+          h('span', {style: {width: '28px', height: '4px', borderRadius: '2px', margin: '0 -6px', background: 'black', display: 'inline-block', transform: 'translateY(-5px) rotate(-15deg)'}}),
         ]), " ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "4"}, [
-          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '4px solid black', display: 'inline-block', transform: 'translateY(-4px) rotate(-15deg)'}}),
+          h('span', {style: {width: '28px', height: '8px', borderRadius: '4px', margin: '0 -6px', background: 'black', display: 'inline-block', transform: 'translateY(-3px) rotate(-15deg)'}}),
         ]), " ",
       ]),
       h('div', {className: 'canvas-draw', style: {width: styleWidth, height: styleHeight, border: `1px solid gray`, boxSizing: `content-box`}}, [
