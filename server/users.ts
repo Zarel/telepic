@@ -45,6 +45,30 @@ export class Connection {
     for (const room of this.rooms) {
       room.handleAccountUpdate(this);
     }
+    if (!this.rooms.size) {
+      this.sendRooms();
+    }
+  }
+
+  async sendRooms() {
+    if (!this.user) return;
+    try {
+      const rooms = await userRoomsTable.selectAll<any>(
+        `userrooms.roomcode, userrooms.yourstacks, userrooms.lastmovetime, rooms.players, rooms.progress`,
+        `LEFT JOIN rooms ON userrooms.roomcode = rooms.roomcode WHERE userrooms.email = ? ORDER BY userrooms.lastmovetime DESC LIMIT 100`,
+        [this.user.email]
+      );
+      const response = rooms.map(record => ({
+        roomCode: record.roomcode,
+        progress: record.progress,
+        lastMoveTime: record.lastmovetime,
+        yourStacks: record.yourstacks,
+        players: record.players,
+      }))
+      this.send(`yourrooms|${JSON.stringify(response)}`);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   async register(email: string, unencryptedPassword: string, name: string) {
@@ -158,7 +182,6 @@ export class User {
         await userRoomsTable.set(`${player.accountid}|${room.roomid}`, {
           email: player.accountid,
           roomcode: room.roomid,
-          lastmovetime: room.lastMoveTime,
           yourstacks: player.stacks.length,
         });
       } catch (err) {

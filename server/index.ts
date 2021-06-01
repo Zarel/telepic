@@ -2,6 +2,7 @@ import sockjs from 'sockjs';
 import http from 'http';
 import https from 'https';
 import fs from 'fs';
+import path from 'path';
 
 import {Room, rooms} from './game';
 import {Connection} from './users';
@@ -124,6 +125,8 @@ if (HTTPS_PORT) {
   httpsServer.listen(HTTPS_PORT, '0.0.0.0');
   console.log(`Listening on wss://localhost:${HTTPS_PORT}`);
 }
+
+console.log(`Client: ` + path.resolve(__dirname, '..', 'client-dist', 'index.html'));
 
 process.on('SIGINT', async () => {
   process.stdout.write(`Saving ${rooms.size} open rooms... `);

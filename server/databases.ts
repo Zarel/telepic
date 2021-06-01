@@ -28,7 +28,6 @@ export const userRoomsTable = new DatabaseTable<{
   roomcode: string,
   lastmovetime: number,
   yourstacks: number,
-  progress: GameProgress,
 }>(db, 'userrooms', 'id');
 
 export const usersTable = new DatabaseTable<{

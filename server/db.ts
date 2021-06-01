@@ -40,27 +40,27 @@ export class DatabaseTable<T = {[k: string]: string | number | null}> {
 
   // basic queries that TypeScript can typecheck!
 
-  async selectOneWhere(entries: string, where: string, params?: SQLParam[]): Promise<T | undefined> {
-    const results = await this.db.query<T>(`SELECT ${entries} FROM ${this.name} WHERE ${where} LIMIT 1`, params);
+  async selectOne(entries: string, where: string, params?: SQLParam[]): Promise<T | undefined> {
+    const results = await this.db.query<T>(`SELECT ${entries} FROM ${this.name} ${where} LIMIT 1`, params);
     return results[0];
   }
-  selectAllWhere(entries: string, where: string, params?: SQLParam[]): Promise<T[]> {
-    return this.db.query<T>(`SELECT ${entries} FROM ${this.name} WHERE ${where}`, params);
+  selectAll<R = T>(entries: string, where: string, params?: SQLParam[]): Promise<R[]> {
+    return this.db.query<R>(`SELECT ${entries} FROM ${this.name} ${where}`, params);
   }
   insert(entries: Partial<T>) {
     return this.db.query(`INSERT INTO ${this.name} SET ?`, [entries as any]);
   }
-  updateOneWhere(entries: Partial<T>, where: string, params: SQLParam[] = []) {
-    return this.db.query(`UPDATE ${this.name} SET ? WHERE ${where} LIMIT 1`, [entries as any, ...params]);
+  updateOne(entries: Partial<T>, where: string, params: SQLParam[] = []) {
+    return this.db.query(`UPDATE ${this.name} SET ? ${where} LIMIT 1`, [entries as any, ...params]);
   }
-  updateAllWhere(entries: Partial<T>, where: string, params: SQLParam[] = []) {
-    return this.db.query(`UPDATE ${this.name} SET ? WHERE ${where}`, [entries as any, ...params]);
+  updateAll(entries: Partial<T>, where: string, params: SQLParam[] = []) {
+    return this.db.query(`UPDATE ${this.name} SET ? ${where}`, [entries as any, ...params]);
   }
-  deleteOneWhere(where: string, params?: SQLParam[]) {
-    return this.db.query(`DELETE FROM ${this.name} WHERE ${where} LIMIT 1`, params);
+  deleteOne(where: string, params?: SQLParam[]) {
+    return this.db.query(`DELETE FROM ${this.name} ${where} LIMIT 1`, params);
   }
-  deleteAllWhere(where: string, params?: SQLParam[]) {
-    return this.db.query(`DELETE FROM ${this.name} WHERE ${where}`, params);
+  deleteAll(where: string, params?: SQLParam[]) {
+    return this.db.query(`DELETE FROM ${this.name} ${where}`, params);
   }
 
   // high-level
@@ -77,7 +77,7 @@ export class DatabaseTable<T = {[k: string]: string | number | null}> {
     }
   }
   get(primaryKey: string | number) {
-    return this.selectOneWhere(`*`, `${this.primaryKeyName} = ?`, [primaryKey]);
+    return this.selectOne(`*`, `WHERE ${this.primaryKeyName} = ?`, [primaryKey]);
   }
   set(primaryKey: string | number, value: Partial<T>) {
     return this.db.query(
@@ -86,9 +86,9 @@ export class DatabaseTable<T = {[k: string]: string | number | null}> {
     );
   }
   delete(primaryKey: string | number) {
-    return this.deleteOneWhere(`${this.primaryKeyName} = ?`, [primaryKey])
+    return this.deleteOne(`WHERE ${this.primaryKeyName} = ?`, [primaryKey])
   }
   update(primaryKey: string | number, value: Partial<T>) {
-    return this.updateOneWhere(value, `${this.primaryKeyName} = ?`, [primaryKey]);
+    return this.updateOne(value, `WHERE ${this.primaryKeyName} = ?`, [primaryKey]);
   }
 }

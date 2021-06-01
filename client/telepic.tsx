@@ -40,6 +40,13 @@ const telepic = new class Telepic {
   connected = false;
   subscription?: () => void;
   room?: Room;
+  rooms?: {
+    roomCode: string,
+    progress: number,
+    lastMoveTime: number,
+    yourStacks: number,
+    players: string,
+  }[];
   backlog: string[] = [];
   draw?: CanvasDraw;
   /** undefined: login/register in progress */
@@ -156,6 +163,10 @@ const telepic = new class Telepic {
       break;
     case 'player':
       this.room?.updatePlayer(parts[1] ? JSON.parse(parts[1]): undefined);
+      this.update();
+      break;
+    case 'yourrooms':
+      this.rooms = JSON.parse(parts[1]);
       this.update();
       break;
     default:
@@ -550,9 +561,48 @@ class Main extends preact.Component {
   generateRoomCode() {
     return `${Math.trunc(Math.random() * (36 ** 6)).toString(36)}${Math.trunc(Math.random() * (36 ** 6)).toString(36)}`;
   }
-  renderRoom() {
-    const room = telepic.room;
-    if (!room) return <div class="body">
+  relativeTime(time: number) {
+    const timeAgo = Date.now() - time;
+    if (timeAgo < 60 * 1000) {
+      return `just now`;
+    }
+    const minutesAgo = timeAgo / (60 * 1000);
+    if (minutesAgo < 60) {
+      return `${Math.round(minutesAgo)} minutes ago`;
+    }
+    if (minutesAgo < 24 * 60) {
+      return `${Math.round(minutesAgo / 60)} hours ago`;
+    }
+    return `${Math.round(minutesAgo / (60 * 24))} days ago`;
+  }
+  renderPastGames() {
+    if (!telepic.rooms || !telepic.rooms.length) return null;
+    const activeGames = telepic.rooms.filter(room => room.progress !== 2);
+    const oldGames = telepic.rooms.filter(room => room.progress === 2);
+    return <div>
+      {!!activeGames.length && <div>
+        <h2>Your active games</h2>
+        <ul>
+          {activeGames.map(room => <li>
+            <a href={`#${room.roomCode}`}>
+              {!!room.yourStacks && <strong>{room.yourStacks} stacks waiting </strong>}
+              ({this.relativeTime(room.lastMoveTime)}) with {room.players}
+            </a>
+          </li>)}
+        </ul>
+      </div>}
+      {!!oldGames.length && <div>
+        <h2>Your finished games</h2>
+        <ul>
+          {oldGames.map(room => <li>
+            <a href={`#${room.roomCode}`}>({this.relativeTime(room.lastMoveTime)}) with {room.players}</a>
+          </li>)}
+        </ul>
+      </div>}
+    </div>;
+  }
+  renderLanding() {
+    return <div class="body">
       <p>This is a Telephone Pictionary game!</p>
       <form class="startform" onSubmit={this.create}>
         <p><label>
@@ -561,9 +611,8 @@ class Main extends preact.Component {
         </label></p>
         <p class="buttonbar"><button type="submit">Create</button></p>
       </form>
+      {this.renderPastGames()}
     </div>;
-
-    return <RoomComponent room={room} />;
   }
   override render() {
     return <div>
@@ -572,7 +621,7 @@ class Main extends preact.Component {
         <h1>Telepic</h1>
       </div>
       {!telepic.connected && <p class="bigerror"><strong>Not connected</strong></p>}
-      {this.renderRoom()}
+      {telepic.room ? <RoomComponent room={telepic.room} /> : this.renderLanding()}
     </div>;
   }
 }
