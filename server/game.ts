@@ -157,7 +157,7 @@ export class Room {
     }
     this.updateSpectators();
     this.updatePlayer(player);
-    User.rememberGame(player.accountid, this);
+    User.rememberGame(player, this);
     return true;
   }
 
@@ -171,7 +171,7 @@ export class Room {
     }
     this.players.splice(index, 1);
     this.updateSpectators();
-    User.forgetGame(player.accountid, this);
+    User.forgetGame(player, this);
     return true;
   }
 
@@ -358,7 +358,7 @@ export class Room {
           connection.send(`error|You were a player, but the account you logged into is a different player.`);
         } else {
           player.accountid = connection.accountid();
-          User.rememberGame(player.accountid, this);
+          User.rememberGame(player, this);
         }
       }
       if (player.accountid !== connection.accountid()) {

@@ -1,7 +1,7 @@
 import type sockjs from 'sockjs';
 import {sessionsTable, usersTable, userRoomsTable} from './databases';
 import bcrypt from 'bcrypt';
-import type {Room} from './game';
+import type {Player, Room} from './game';
 
 const EMAIL_REGEX = /^(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*|"(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21\x23-\x5b\x5d-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])*")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\[(?:(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9]))\.){3}(?:(2(5[0-5]|[0-4][0-9])|1[0-9][0-9]|[1-9]?[0-9])|[a-z0-9-]*[a-z0-9]:(?:[\x01-\x08\x0b\x0c\x0e-\x1f\x21-\x5a\x53-\x7f]|\\[\x01-\x09\x0b\x0c\x0e-\x7f])+)\])$/;
 
@@ -155,11 +155,14 @@ export class User {
     this.name = options.name;
   }
 
-  static async rememberGame(accountid: string | undefined, room: Room) {
-    if (accountid?.includes('@')) {
+  static async rememberGame(player: Player, room: Room) {
+    if (player.accountid?.includes('@')) {
       try {
-        await userRoomsTable.set(`${accountid}|${room.roomid}`, {
-          email: accountid, roomcode: room.roomid, lastmovetime: room.lastMoveTime,
+        await userRoomsTable.set(`${player.accountid}|${room.roomid}`, {
+          email: player.accountid,
+          roomcode: room.roomid,
+          lastmovetime: room.lastMoveTime,
+          yourstacks: player.stacks.length,
         });
       } catch (err) {
         console.error(`Database error: ${err.message}`);
@@ -167,10 +170,10 @@ export class User {
       }
     }
   }
-  static async forgetGame(accountid: string | undefined, room: Room) {
-    if (accountid?.includes('@')) {
+  static async forgetGame(player: Player, room: Room) {
+    if (player.accountid?.includes('@')) {
       try {
-        await userRoomsTable.delete(`${accountid}|${room.roomid}`);
+        await userRoomsTable.delete(`${player.accountid}|${room.roomid}`);
       } catch (err) {
         console.error(`Database error: ${err.message}`);
         console.error(`Query: ${err.sql}`);

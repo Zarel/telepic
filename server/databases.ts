@@ -17,7 +17,8 @@ export const userRoomsTable = new DatabaseTable<{
   id: string,
   email: string,
   roomcode: string,
-  lastmovetime: number
+  lastmovetime: number,
+  yourstacks: number,
 }>(db, 'userrooms', 'id');
 
 export const usersTable = new DatabaseTable<{
