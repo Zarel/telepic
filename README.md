@@ -1,7 +1,7 @@
 Telepic
 =======
 
-A Telephone Pictionary game!
+A Telephone Pictionary game! Write phrases, have people draw them, have people describe those drawings, have people draw those descriptions... see where it goes!
 
 Can be played at: https://guangcongluo.com/telepic/
 

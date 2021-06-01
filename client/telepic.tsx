@@ -607,7 +607,7 @@ class Main extends preact.Component {
   }
   renderLanding() {
     return <div class="body">
-      <p>This is a Telephone Pictionary game!</p>
+      <p>A Telephone Pictionary game! Write phrases, have people draw them, have people describe those drawings, have people draw those descriptions... see where it goes!</p>
       <form class="startform" onSubmit={this.create}>
         <p><label>
           Room code:<br />
