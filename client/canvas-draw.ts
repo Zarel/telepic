@@ -90,14 +90,19 @@ export class CanvasDraw {
           h('span', {className: 'color', style: {background: '#8D6E63', display: 'inline-block', width: '12px', height: '12px'}}),
         ]),
         " | ",
+        h<HTMLButtonElement>('button', {className: 'color', onclick: this.clickColor, value: "white"}, [ // eraser
+          h('span', {className: 'color', style: {background: 'white', display: 'inline-block', width: '11px', height: '11px', border: '1px solid #888'}}),
+          " Eraser"
+        ]),
+        " | ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "1"}, [
-          "Thin",
+          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '1px solid black', display: 'inline-block', transform: 'translateY(-6px) rotate(-15deg)'}}),
         ]), " ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "2"}, [
-          "Normal",
+          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '2px solid black', display: 'inline-block', transform: 'translateY(-5px) rotate(-15deg)'}}),
         ]), " ",
         h<HTMLButtonElement>('button', {onclick: this.clickStrokeWidth, value: "4"}, [
-          "Thick",
+          h('span', {style: {padding: '0 20px 0 0', margin: '0 -4px', borderBottom: '4px solid black', display: 'inline-block', transform: 'translateY(-4px) rotate(-15deg)'}}),
         ]), " ",
       ]),
       h('div', {className: 'canvas-draw', style: {width: styleWidth, height: styleHeight, border: `1px solid gray`, boxSizing: `content-box`}}, [
@@ -156,13 +161,18 @@ export class CanvasDraw {
     return [(x - rect.left) * pixelRatio, (y - rect.top) * pixelRatio];
   }
 
+  getStrokeWidth() {
+    if (this.strokeColor === 'white') return 15;
+    return this.strokeWidth;
+  }
+
   draw(x: number, y: number) {
     // draw cursor
     this.interfaceContext.clearRect(0, 0, this.w, this.h);
     this.interfaceContext.lineWidth = this.pixelRatio;
     this.interfaceContext.strokeStyle = 'gray';
     this.interfaceContext.beginPath();
-    this.interfaceContext.arc(x, y, this.strokeWidth * this.pixelRatio, 0, Math.PI * 2);
+    this.interfaceContext.arc(x, y, this.getStrokeWidth() * this.pixelRatio, 0, Math.PI * 2);
     this.interfaceContext.stroke();
 
     // current stroke
@@ -212,15 +222,21 @@ export class CanvasDraw {
       } else if (button.name === 'clear') {
         button.disabled = !this.strokes.length;
       } else {
-        button.disabled = (button.value === this.strokeColor || button.value === `${this.strokeWidth}`);
+        button.disabled = (
+          button.value === this.strokeColor || button.value === `${this.strokeWidth}` ||
+          (this.strokeColor === 'white' && button.value === `${parseInt(button.value)}`)
+        );
       }
     }
   }
 
   save() {
     if (!this.wrapper.id) return;
-    if (!this.strokes.length) return;
     try {
+      if (!this.strokes.length) {
+        localStorage.removeItem('canvasdraw');
+        return;
+      }
       localStorage.setItem('canvasdraw', JSON.stringify({
         id: this.wrapper.id,
         strokes: this.strokes,
@@ -278,7 +294,7 @@ export class CanvasDraw {
     this.currentStroke = {
       points: [[x, y]],
       color: this.strokeColor,
-      width: this.strokeWidth,
+      width: this.getStrokeWidth(),
     };
     this.draw(x, y);
   };
