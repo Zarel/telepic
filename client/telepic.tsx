@@ -176,7 +176,7 @@ const telepic = new class Telepic {
   }
 };
 
-class CanvasDrawComponent extends preact.Component {
+class CanvasDrawComponent extends preact.Component<{id: string}> {
   draw?: CanvasDraw;
   override shouldComponentUpdate() {
     return false;
@@ -186,7 +186,7 @@ class CanvasDrawComponent extends preact.Component {
     telepic.draw = this.draw;
   }
   render() {
-    return <div data-dimensions="480x480"></div>;
+    return <div data-dimensions="480x480" id={this.props.id}></div>;
   }
 }
 
@@ -272,6 +272,10 @@ class RoomComponent extends preact.Component<{room: Room}> {
       <p class="attrib">&mdash;{sheet.author}</p>
     </blockquote>;
   }
+  idPart(str: string | undefined) {
+    if (!str) return '';
+    return encodeURIComponent(str).replace(/[^A-Za-z0-9]/g, '');
+  }
   renderYou(room: Room) {
     if (room.started === undefined) {
       return <p>
@@ -318,7 +322,7 @@ class RoomComponent extends preact.Component<{room: Room}> {
       {you.request === 'pic' && <blockquote class="sheet sheet-pic">
         <form onSubmit={this.submitSheet}>
           <p><label>{you.preview ? "Draw this" : "Draw something to describe"}:</label></p>
-          <CanvasDrawComponent />
+          <CanvasDrawComponent id={`${room.roomid}-${this.idPart(you.preview?.value)}-${this.idPart(you.preview?.author)}`} />
           <p class="buttonbar"><button type="submit">Pass sheet on</button></p>
           <p class="attrib">&mdash;{you.name}</p>
         </form>

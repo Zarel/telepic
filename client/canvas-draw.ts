@@ -133,6 +133,7 @@ export class CanvasDraw {
     this.currentStrokeContext = this.currentStrokeCanvas.getContext('2d')!;
     this.drawingContext = this.drawingCanvas.getContext('2d')!;
 
+    this.load();
     this.updateButtons();
     this.redraw();
   }
@@ -176,6 +177,7 @@ export class CanvasDraw {
     for (const stroke of this.strokes) {
       this.drawStroke(this.drawingContext, stroke);
     }
+    this.save();
   }
   drawStroke(context: CanvasRenderingContext2D, stroke: Stroke) {
     context.strokeStyle = stroke.color;
@@ -198,6 +200,7 @@ export class CanvasDraw {
     this.currentStroke = null;
     this.drawingContext.drawImage(this.currentStrokeCanvas, 0, 0, this.w, this.h);
     this.currentStrokeContext.clearRect(0, 0, this.w, this.h);
+    this.save();
     this.updateButtons();
   }
 
@@ -213,6 +216,27 @@ export class CanvasDraw {
       }
     }
   }
+
+  save() {
+    if (!this.wrapper.id) return;
+    if (!this.strokes.length) return;
+    try {
+      localStorage.setItem('canvasdraw', JSON.stringify({
+        id: this.wrapper.id,
+        strokes: this.strokes,
+      }));
+    } catch {}
+  }
+  load() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('canvasdraw')!);
+      if (saved.id && saved.id === this.wrapper.id) {
+        this.strokes = saved.strokes;
+        // constructor already redraws after this; no need to redraw here
+      }
+    } catch {}
+  }
+
   clickColor = (ev: Event) => {
     ev.preventDefault();
     ev.stopImmediatePropagation();
