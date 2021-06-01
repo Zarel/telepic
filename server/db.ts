@@ -7,9 +7,9 @@ import mysql from 'mysql';
 export type SQLParam = string | number | null | {[k: string]: string | number | null};
 
 export class Database {
-  connection: mysql.Connection;
+  connection: mysql.Pool;
   constructor(url: string) {
-    this.connection = mysql.createConnection(url);
+    this.connection = mysql.createPool(url);
   }
   query<T = {[k: string]: any}>(query: string, params?: SQLParam[]): Promise<T[]> {
     // console.log(query);
