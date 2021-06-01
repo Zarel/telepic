@@ -1,4 +1,4 @@
-import {roomsTable} from './databases';
+import {roomsTable, GameProgress} from './databases';
 import {Connection, User} from './users';
 
 export const rooms = new Map<string, Room>();
@@ -93,9 +93,7 @@ export class Stack {
 }
 
 export class Room {
-  /** undefined = still loading */
-  started?: boolean = false;
-  ended = false;
+  progress = GameProgress.SETUP;
   host = '';
   creationTime = Date.now();
   lastMoveTime = Date.now();
@@ -131,7 +129,7 @@ export class Room {
       // player online status may have updated
       this.updateSpectators();
       this.updatePlayer(curPlayer);
-    } else if (this.started !== undefined) {
+    } else if (this.progress !== GameProgress.LOADING) {
       // if we're loading, wait until we're done loading to send updates
       this.update(connection);
     }
@@ -146,7 +144,7 @@ export class Room {
   }
 
   addPlayer(connection?: Connection, name?: string, index = this.players.length) {
-    if (this.started) return false;
+    if (this.progress !== GameProgress.SETUP) return false;
     const playerName = name || connection?.name || `Player ${this.players.length + 1}`;
     if (this.hasPlayer(playerName)) return false;
     const player = new Player({name: playerName}, connection);
@@ -162,7 +160,7 @@ export class Room {
   }
 
   removePlayer(connection: Connection) {
-    if (this.started) return false;
+    if (this.progress !== GameProgress.SETUP) return false;
     const index = this.players.findIndex(player => player.connections.has(connection));
     const player = this.players[index];
     if (index < 0) return false;
@@ -218,9 +216,9 @@ export class Room {
   }
 
   start() {
-    if (this.started) return false;
+    if (this.progress !== GameProgress.SETUP) return false;
     if (!this.players.length) return false;
-    this.started = true;
+    this.progress = GameProgress.STARTED;
     this.settings.desiredStackSize ||= Math.max(5, this.players.length);
     this.settings.startWith ||= 'text';
     for (const player of this.players) {
@@ -233,13 +231,13 @@ export class Room {
   }
 
   tryEnd() {
-    if (!this.started || this.ended) return false;
+    if (this.progress !== GameProgress.STARTED) return false;
     if (this.players.some(player => !!player.stacks.length)) return false;
     return this.end();
   }
   end() {
-    if (!this.started || this.ended) return false;
-    this.ended = true;
+    if (this.progress !== GameProgress.STARTED) return false;
+    this.progress = GameProgress.ENDED;
     for (const player of this.players) {
       player.stacks = [];
     }
@@ -251,24 +249,22 @@ export class Room {
   toJSON() {
     return {
       roomid: this.roomid,
-      started: this.started || undefined,
-      loading: this.started === undefined || undefined,
-      players: this.players.map(player => player.toJSON(this.ended)),
+      started: this.progress === GameProgress.STARTED || this.progress === GameProgress.ENDED || undefined,
+      loading: this.progress === GameProgress.LOADING || undefined,
+      players: this.players.map(player => player.toJSON(this.progress === GameProgress.ENDED)),
       settings: this.settings,
     };
   }
 
   serialize() {
     return {
-      started: this.started,
-      ended: this.ended,
+      progress: this.progress,
       players: this.players.map(player => player.serialize()),
       settings: this.settings,
     };
   }
   deserialize(data: ReturnType<Room['serialize']>) {
-    this.started = !!data.started;
-    this.ended = !!data.ended;
+    this.progress = data.progress;
     this.players = [];
     const playerTable = new Map<string, Player>();
     for (const playerData of data.players) {
@@ -292,11 +288,11 @@ export class Room {
     this.updatePlayers();
   }
   async load() {
-    this.started = undefined;
+    this.progress = GameProgress.LOADING;
     try {
       const data = await roomsTable.get(this.roomid);
       if (!data) {
-        this.started = false;
+        this.progress = GameProgress.SETUP;
         this.updateSpectators();
         return;
       }
@@ -305,15 +301,15 @@ export class Room {
       this.lastMoveTime = data.lastmovetime;
       this.deserialize(JSON.parse(data.state));
     } catch (err) {
-      this.started = false;
+      this.progress = GameProgress.SETUP;
       this.updateSpectators();
       console.error(`Database error: ${err.message}`);
       console.error(`Query: ${err.sql}`);
     }
   }
   async save() {
-    if (this.ended && !this.started) return;
-    if (!this.started && !this.players.length) return;
+    if (this.progress === GameProgress.LOADING) return;
+    if (this.progress === GameProgress.SETUP && !this.players.length) return;
     try {
       await roomsTable.set(this.roomid, {
         host: this.host,
@@ -321,6 +317,7 @@ export class Room {
         lastmovetime: this.lastMoveTime,
         playercount: this.players.length,
         players: this.players.map(p => p.name).join(', ').slice(0, 100),
+        progress: this.progress,
         state: JSON.stringify(this.serialize()),
       });
     } catch (err) {
