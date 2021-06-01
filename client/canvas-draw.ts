@@ -49,6 +49,8 @@ export class CanvasDraw {
 
   strokeWidth = 2;
   strokeColor = 'black';
+  /** truthy only if the eraser is currently enabled */
+  notEraserStrokes: {strokeWidth: number, strokeColor: string} | null = null;
 
   constructor(wrapper?: HTMLDivElement | null) {
     if (wrapper && wrapper.dataset.dimensions) {
@@ -161,18 +163,13 @@ export class CanvasDraw {
     return [(x - rect.left) * pixelRatio, (y - rect.top) * pixelRatio];
   }
 
-  getStrokeWidth() {
-    if (this.strokeColor === 'white') return 15;
-    return this.strokeWidth;
-  }
-
   draw(x: number, y: number) {
     // draw cursor
     this.interfaceContext.clearRect(0, 0, this.w, this.h);
     this.interfaceContext.lineWidth = this.pixelRatio;
     this.interfaceContext.strokeStyle = 'gray';
     this.interfaceContext.beginPath();
-    this.interfaceContext.arc(x, y, this.getStrokeWidth() * this.pixelRatio, 0, Math.PI * 2);
+    this.interfaceContext.arc(x, y, this.strokeWidth * this.pixelRatio, 0, Math.PI * 2);
     this.interfaceContext.stroke();
 
     // current stroke
@@ -222,10 +219,7 @@ export class CanvasDraw {
       } else if (button.name === 'clear') {
         button.disabled = !this.strokes.length;
       } else {
-        button.disabled = (
-          button.value === this.strokeColor || button.value === `${this.strokeWidth}` ||
-          (this.strokeColor === 'white' && button.value === `${parseInt(button.value)}`)
-        );
+        button.disabled = (button.value === this.strokeColor || button.value === `${this.strokeWidth}`);
       }
     }
   }
@@ -257,6 +251,13 @@ export class CanvasDraw {
     ev.preventDefault();
     ev.stopImmediatePropagation();
     const value = (ev.currentTarget as HTMLButtonElement).value;
+    if (value === 'white') {
+      this.notEraserStrokes ||= {strokeColor: this.strokeColor, strokeWidth: this.strokeWidth};
+      this.strokeWidth = 15;
+    } else if (this.notEraserStrokes) {
+      this.strokeWidth = this.notEraserStrokes.strokeWidth;
+      this.notEraserStrokes = null;
+    }
     this.strokeColor = value;
     this.updateButtons();
   };
@@ -265,6 +266,10 @@ export class CanvasDraw {
     ev.stopImmediatePropagation();
     const value = (ev.currentTarget as HTMLButtonElement).value;
     this.strokeWidth = parseInt(value);
+    if (this.notEraserStrokes) {
+      this.strokeColor = this.notEraserStrokes.strokeColor;
+      this.notEraserStrokes = null;
+    }
     this.updateButtons();
   };
   undo = (ev: Event) => {
@@ -294,7 +299,7 @@ export class CanvasDraw {
     this.currentStroke = {
       points: [[x, y]],
       color: this.strokeColor,
-      width: this.getStrokeWidth(),
+      width: this.strokeWidth,
     };
     this.draw(x, y);
   };
