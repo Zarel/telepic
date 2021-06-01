@@ -9,6 +9,8 @@ Written in Preact, SockJS, TypeScript, and MySQL.
 
 (I endorse all these tech choices except MySQL, which I'm only using because Dreamhost doesn't let me use Postgres on a shared account. Feel free to tweet at them to complain!)
 
+Works fine even without a database - you'll be unable to log in or save past games, but the game itself is playable.
+
 
 Starting
 --------

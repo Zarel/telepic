@@ -303,8 +303,7 @@ export class Room {
     } catch (err) {
       this.progress = GameProgress.SETUP;
       this.updateSpectators();
-      console.error(`Database error: ${err.message}`);
-      console.error(`Query: ${err.sql}`);
+      console.error(err);
     }
   }
   async save() {
@@ -321,8 +320,7 @@ export class Room {
         state: JSON.stringify(this.serialize()),
       });
     } catch (err) {
-      console.error(`Database error: ${err.message}`);
-      console.error(`Query: ${err.sql}`);
+      console.error(err);
     }
   }
 

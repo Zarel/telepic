@@ -78,8 +78,7 @@ export class Connection {
       });
     } catch (err) {
       this.send(`usererror|Database error: ${err.message}`);
-      console.error(`Database error: ${err.message}`);
-      console.error(`Query: ${err.sql}`);
+      console.error(err);
       return false;
     }
     this.setUser(new User(userInfo));
@@ -108,8 +107,7 @@ export class Connection {
       this.setUser(new User(userInfo));
     } catch (err) {
       this.send(`usererror|Database error: ${err.message}`);
-      console.error(`Database error: ${err.message}`);
-      console.error(`Query: ${err.sql}`);
+      console.error(err);
       return false;
     }
     return true;
@@ -121,8 +119,7 @@ export class Connection {
     try {
       await sessionsTable.delete(this.sessionid);
     } catch (err) {
-      console.error(`Database error: ${err.message}`);
-      console.error(`Query: ${err.sql}`);
+      console.error(err);
     }
     return true;
   }
@@ -165,8 +162,7 @@ export class User {
           yourstacks: player.stacks.length,
         });
       } catch (err) {
-        console.error(`Database error: ${err.message}`);
-        console.error(`Query: ${err.sql}`);
+        console.error(err);
       }
     }
   }
@@ -175,8 +171,7 @@ export class User {
       try {
         await userRoomsTable.delete(`${player.accountid}|${room.roomid}`);
       } catch (err) {
-        console.error(`Database error: ${err.message}`);
-        console.error(`Query: ${err.sql}`);
+        console.error(err);
       }
     }
   }
