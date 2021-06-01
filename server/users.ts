@@ -54,7 +54,7 @@ export class Connection {
     if (!this.user) return;
     try {
       const rooms = await userRoomsTable.selectAll<any>(
-        `userrooms.roomcode, userrooms.yourstacks, userrooms.lastmovetime, rooms.players, rooms.progress`,
+        `userrooms.roomcode, userrooms.yourstacks, rooms.lastmovetime, rooms.players, rooms.progress`,
         `LEFT JOIN rooms ON userrooms.roomcode = rooms.roomcode WHERE userrooms.email = ? ORDER BY userrooms.lastmovetime DESC LIMIT 100`,
         [this.user.email]
       );
