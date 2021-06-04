@@ -9,6 +9,7 @@
  * @author Guangcong Luo <guangcongluo@gmail.com>
  * @license MIT
  */
+'use strict';
 
 const babel = require('@babel/core');
 const fs = require('fs');
@@ -118,15 +119,16 @@ function noRebuildNeeded(src, dest) {
 }
 
 function compileToDir(srcDir, destDir, opts = {}) {
-  const incremental = opts.incremental;
-  delete opts.incremental;
+  const babelOpts = {...opts};
+  delete babelOpts.incremental;
+  delete babelOpts.watch;
 
   function handleFile(src, base) {
     let relative = path.relative(base, src);
 
     if (!relative.endsWith('.ts') && !relative.endsWith('.tsx')) {
       const dest = path.join(destDir, relative);
-      if (incremental && noRebuildNeeded(src, dest)) return 0;
+      if (opts.incremental && noRebuildNeeded(src, dest)) return 0;
       fs.mkdirSync(path.dirname(dest), {recursive: true});
       fs.copyFileSync(src, dest);
       fs.chmodSync(dest, fs.statSync(src).mode);
@@ -138,10 +140,10 @@ function compileToDir(srcDir, destDir, opts = {}) {
 
     const dest = path.join(destDir, relative);
 
-    if (incremental && noRebuildNeeded(src, dest)) return 0;
+    if (opts.incremental && noRebuildNeeded(src, dest)) return 0;
 
     const res = babel.transformFileSync(src, {
-      ...opts,
+      ...babelOpts,
       sourceFileName: slash(path.relative(dest + "/..", src)),
     });
 
@@ -187,18 +189,45 @@ function compileToDir(srcDir, destDir, opts = {}) {
   fs.mkdirSync(destDir, {recursive: true});
   const srcDirs = typeof srcDir === 'string' ? [srcDir] : srcDir;
   for (const dir of srcDirs) total += handle(dir);
-  if (incremental) opts.incremental = true; // incredibly dumb hack to preserve the option
+
+  if (opts.watch) {
+    const chokidar = require('chokidar');
+
+    for (const dir of srcDirs) {
+      const watcher = chokidar.watch(dir, {
+        persistent: true,
+        ignoreInitial: true,
+        awaitWriteFinish: {
+          stabilityThreshold: 50,
+          pollInterval: 10,
+        },
+      });
+  
+      for (const type of ["add", "change"]) {
+        watcher.on(type, (filepath) => {
+          let updated;
+          try {
+            updated = handleFile(filepath, dir);
+          } catch (err) {
+            console.error(err);
+          }
+          if (updated) console.log(`Updated ${filepath}`);
+        });
+      }
+    }
+  }
+
   return total;
 }
 
 function compileToFile(srcFile, destFile, opts) {
-  const incremental = opts.incremental;
-  delete opts.incremental;
+  const babelOpts = {...opts};
+  delete babelOpts.incremental;
+  delete babelOpts.watch;
 
   const srcFiles = typeof srcFile === 'string' ? [srcFile] : srcFile;
 
-  if (incremental && srcFiles.every(src => noRebuildNeeded(src, destFile))) {
-    opts.incremental = true; // incredibly dumb hack to preserve the option
+  if (opts.incremental && srcFiles.every(src => noRebuildNeeded(src, destFile))) {
     return 0;
   }
 
@@ -207,7 +236,7 @@ function compileToFile(srcFile, destFile, opts) {
   for (const src of srcFiles) {
     if (!fs.existsSync(src)) continue;
 
-    const res = babel.transformFileSync(src, opts);
+    const res = babel.transformFileSync(src, babelOpts);
 
     if (res) results.push(res);
 
@@ -221,7 +250,6 @@ function compileToFile(srcFile, destFile, opts) {
   outputFileSync(destFile, combined, opts);
 
   if (VERBOSE) console.log("-> " + destFile);
-  if (incremental) opts.incremental = true; // incredibly dumb hack to preserve the option
   return results.length;
 }
 

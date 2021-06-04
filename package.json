@@ -24,5 +24,8 @@
     "bcrypt": "^5.0.1",
     "mysql": "^2.18.1",
     "sockjs": "^0.3.21"
+  },
+  "optionalDependencies": {
+    "chokidar": "^3.5.1"
   }
 }

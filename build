@@ -16,10 +16,13 @@ if (!fs.existsSync('./client/config.ts')) {
 	fs.writeFileSync('./client/config.ts', `export const SERVER_URL = 'http://localhost:8000';\n`);
 }
 
+const watch = process.argv.includes('-w') || process.argv.includes('--watch');
+
 const compileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tools/.babelrc') + ')'), {
 	babelrc: false,
 	incremental: true,
 	ignore: ['tsconfig.json'],
+	watch,
 });
 
 compiledFiles += compiler.compileToDir(
@@ -32,6 +35,7 @@ const serverCompileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tool
 	babelrc: false,
 	incremental: true,
 	ignore: ['tsconfig.json'],
+	watch,
 });
 compiledFiles += compiler.compileToDir(
 	'server',
@@ -43,3 +47,7 @@ const diff = process.hrtime(compileStartTime);
 console.log(
 	`(${compiledFiles} ${compiledFiles !== 1 ? "files" : "file"} in ${diff[0] + Math.round(diff[1] / 1e6) / 1e3}s) DONE`
 );
+
+if (watch) {
+	console.log('Watching for changes...');
+}
