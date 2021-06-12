@@ -8,6 +8,7 @@ process.chdir(__dirname);
 
 const fs = require('fs');
 const compiler = require('./build-tools/compiler');
+const compilerE = require('./build-tools/compiler-esbuild');
 
 const compileStartTime = process.hrtime();
 let compiledFiles = 0;
@@ -25,7 +26,7 @@ const compileOpts = Object.assign(eval('(' + fs.readFileSync('./build-tools/.bab
 	watch,
 });
 
-compiledFiles += compiler.compileToDir(
+compiledFiles += compilerE.compileToDir(
 	'client',
 	'client-dist',
 	compileOpts

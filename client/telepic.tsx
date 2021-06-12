@@ -1,4 +1,4 @@
-import preact from 'preact';
+import * as preact from 'preact';
 declare type SockJS = WebSocket;
 declare var SockJS: typeof WebSocket;
 import {CanvasDraw} from './canvas-draw';
@@ -32,7 +32,7 @@ class Room {
   }
 }
 
-const telepic = new class Telepic {
+const telepic = (window as any).telepic = new class Telepic {
   connection?: WebSocket;
   sessionid!: string;
   /** DEFAULT username - not necessarily your name in the current game */

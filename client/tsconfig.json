@@ -5,6 +5,7 @@
     "noImplicitOverride": true,
     "jsx": "react",
     "jsxFactory": "preact.h",
+    "jsxFragmentFactory": "preact.Fragment",
     "sourceMap": true,
     "esModuleInterop": true,
 
