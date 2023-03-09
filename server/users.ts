@@ -53,18 +53,17 @@ export class Connection {
   async sendRooms() {
     if (!this.user) return;
     try {
-      const rooms = await userRoomsTable.selectAll<any>(
-        `userrooms.roomcode, userrooms.yourstacks, rooms.lastmovetime, rooms.players, rooms.progress`,
-        `LEFT JOIN rooms ON userrooms.roomcode = rooms.roomcode WHERE userrooms.email = ? ORDER BY userrooms.lastmovetime DESC LIMIT 100`,
-        [this.user.email]
-      );
+      const rooms = await userRoomsTable.query<any>(
+      )`SELECT userrooms.roomcode, userrooms.yourstacks, rooms.lastmovetime, rooms.players, rooms.progress
+      FROM userrooms LEFT JOIN rooms ON userrooms.roomcode = rooms.roomcode
+      WHERE userrooms.email = ${this.user.email} ORDER BY userrooms.lastmovetime DESC LIMIT 100`;
       const response = rooms.map(record => ({
         roomCode: record.roomcode,
         progress: record.progress,
         lastMoveTime: record.lastmovetime,
         yourStacks: record.yourstacks,
         players: record.players,
-      }))
+      }));
       this.send(`yourrooms|${JSON.stringify(response)}`);
     } catch (err) {
       console.error(err);

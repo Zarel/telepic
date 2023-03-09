@@ -23,7 +23,7 @@
     "babel-plugin-remove-import-export": "^1.1.1",
     "bcrypt": "^5.0.1",
     "esbuild": "^0.12.6",
-    "mysql": "^2.18.1",
+    "mysql2": "^2.3.3",
     "sockjs": "^0.3.21"
   },
   "optionalDependencies": {
